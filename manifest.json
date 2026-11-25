@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ORACLE",
-  "version": "1.0.3",
-  "description": "A private, fully local browser companion: page analysis, study tools, tab manager and knowledge vault. No API keys, no servers.",
+  "version": "1.0.4",
+  "description": "A private browser companion with optional on-device AI, page analysis, study tools, tab manager and knowledge vault. No paid API keys or AI servers.",
   "minimum_chrome_version": "111",
   "icons": {
     "16": "icon16.png",
