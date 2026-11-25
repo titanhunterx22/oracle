@@ -52,10 +52,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     const senses = [];
     oracleExtractGlosses(data, senses, new WeakSet());
     if (!senses.length) return { ok: false, unavailable: true };
-    cache[word] = { savedAt: Date.now(), senses: senses.slice(0, 12) };
-    const entries = Object.entries(cache).sort((a, b) => (b[1].savedAt || 0) - (a[1].savedAt || 0)).slice(0, 1500);
+    cache[word] = { savedAt: Date.now(), senses: senses.slice(0, 5) };
+    const entries = Object.entries(cache).sort((a, b) => (b[1].savedAt || 0) - (a[1].savedAt || 0)).slice(0, 500);
     await chrome.storage.local.set({ [ORACLE_WORDNET_CACHE]: Object.fromEntries(entries) });
     return { ok: true, cached: false, word, senses: cache[word].senses };
-  })().then(sendResponse).catch(() => sendResponse({ ok: false, unavailable: true }));
+  })().then(sendResponse).catch(async () => {
+    try {
+      const stored = await chrome.storage.local.get(ORACLE_WORDNET_CACHE);
+      const saved = stored[ORACLE_WORDNET_CACHE] || {};
+      if (saved[word] && saved[word].senses) return sendResponse({ ok: true, cached: true, stale: true, word, senses: saved[word].senses });
+    } catch (_) { /* fall through */ }
+    sendResponse({ ok: false, unavailable: true });
+  });
   return true;
 });
