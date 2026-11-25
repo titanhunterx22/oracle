@@ -52,7 +52,7 @@ if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("1
 if (!allScriptCode.includes("SmolLM2-360M-Instruct-q4f32_1-MLC")) {
   throw new Error("The SmolLM2 360M low-memory model is missing from the build.");
 }
-if (!allScriptCode.includes("max_tokens: 160")) {
+if (!/max_tokens\\s*:\\s*160/.test(allScriptCode)) {
   throw new Error("The low-memory generation limit is missing from the build.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
