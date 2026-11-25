@@ -46,8 +46,14 @@ const scripts = files.filter(file => file.endsWith(".js"));
 if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The bundled WebLLM worker was not emitted into dist/.");
 const scriptBundles = await Promise.all(scripts.map(file => fs.readFile(file, "utf8")));
 const allScriptCode = scriptBundles.join("\n");
-if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("2048")) {
-  throw new Error("The low-memory WebLLM context-window override is missing from the build.");
+if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("1024")) {
+  throw new Error("The 1K low-memory WebLLM context-window override is missing from the build.");
+}
+if (!allScriptCode.includes("SmolLM2-360M-Instruct-q4f32_1-MLC")) {
+  throw new Error("The SmolLM2 360M low-memory model is missing from the build.");
+}
+if (!allScriptCode.includes("max_tokens: 160")) {
+  throw new Error("The low-memory generation limit is missing from the build.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
