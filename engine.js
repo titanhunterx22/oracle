@@ -305,39 +305,79 @@ verify|to check that something is true`.split('\n').forEach(l => { const i = l.i
     if (s) { parts.push(`**${rest.slice(0, -s.length)}**`); parts.push(`**-${s}** (${SUF[s]})`); } else parts.push(`**${rest}**`);
     return parts.length > 1 ? parts.join(' + ') : '';
   }
+  function dictionaryDistance(a, b) {
+    if (a === b) return 0;
+    if (Math.abs(a.length - b.length) > 3) return 99;
+    let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const next = [i];
+      let rowMin = i;
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        next[j] = Math.min(next[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+        rowMin = Math.min(rowMin, next[j]);
+      }
+      if (rowMin > 3) return 99;
+      prev = next;
+    }
+    return prev[b.length];
+  }
+  function dictionarySuggestions(query) {
+    const limit = query.length <= 5 ? 1 : query.length <= 9 ? 2 : 3;
+    return Object.keys(GLOSS).map(word => ({
+      word,
+      distance: dictionaryDistance(query, word),
+      prefix: word.startsWith(query) || query.startsWith(word)
+    })).filter(x => x.distance > 0 && x.distance <= limit)
+      .sort((a, b) => a.distance - b.distance || Number(b.prefix) - Number(a.prefix) || a.word.localeCompare(b.word))
+      .slice(0, 3).map(x => x.word);
+  }
   function defineWord(w, doc, userDefs) {
-    w = String(w || '').toLowerCase().trim().replace(/^["“'‘]+|["”'’.?!,:;]+$/g, '');
+    w = String(w || '').toLowerCase().trim().replace(/^["“'‘]+|["”'’.?!,:;]+$/g, '').replace(/\s+/g, ' ');
     if (!w) return 'Enter a word to look up.';
     const out = [];
-    const mine = (userDefs || []).find(d => String(d.title || '').toLowerCase().trim() === w);
+    const normalise = value => String(value || '').toLowerCase().trim().replace(/^["“'‘]+|["”'’.?!,:;]+$/g, '');
+    const mine = (userDefs || []).find(d => normalise(d.title) === w);
     const candidates = [w];
     const add = x => { if (x && !candidates.includes(x)) candidates.push(x); };
     add(stem(w));
     if (/ies$/.test(w) && w.length > 4) add(w.slice(0, -3) + 'y');
+    if (/ied$/.test(w) && w.length > 4) add(w.slice(0, -3) + 'y');
+    if (/ves$/.test(w) && w.length > 4) { add(w.slice(0, -3) + 'f'); add(w.slice(0, -3) + 'fe'); }
     if (/ing$/.test(w) && w.length > 5) {
-      let base = w.slice(0, -3); add(base);
+      const base = w.slice(0, -3); add(base);
       if (/(.)\1$/.test(base)) add(base.slice(0, -1));
       add(base + 'e');
     }
     if (/ed$/.test(w) && w.length > 4) {
-      let base = w.slice(0, -2); add(base);
+      const base = w.slice(0, -2); add(base);
       if (/(.)\1$/.test(base)) add(base.slice(0, -1));
       add(base + 'e');
     }
+    if (/(er|est)$/.test(w) && w.length > 5) {
+      const base = w.replace(/(er|est)$/, ''); add(base);
+      if (/(.)\1$/.test(base)) add(base.slice(0, -1));
+      add(base + 'e');
+      if (/ier$/.test(w)) add(w.slice(0, -3) + 'y');
+    }
+    if (/s$/.test(w) && w.length > 3) add(w.slice(0, -1));
+    if (/es$/.test(w) && w.length > 4) add(w.slice(0, -2));
     const hit = candidates.find(x => GLOSS[x]);
-    if (mine) out.push(`**${w}** — ${mine.text}\n(from your Knowledge Vault)`);
+    if (mine) out.push('**' + w + '** — ' + mine.text + '\n(from your Knowledge Vault)');
     else if (hit) {
-      out.push(`**${w}**${hit !== w ? ` *(base form: ${hit})*` : ''} — ${GLOSS[hit]}.`);
+      out.push('**' + w + '**' + (hit !== w ? ' *(base form: ' + hit + ')*' : '') + ' — ' + GLOSS[hit] + '.');
       out.push('> Source: ORACLE’s built-in offline English glossary.');
     } else {
-      out.push(`**${w}** isn’t in ORACLE’s bundled definition set yet. The dictionary is fully offline, so an unlisted word won’t be sent to an external service.`);
-      const wp = wordParts(w); if (wp) out.push(`Word parts that might help: ${wp}`);
+      out.push('**' + w + '** isn’t in ORACLE’s bundled definition set yet. The dictionary is fully offline, so an unlisted word won’t be sent to an external service.');
+      const suggestions = w.includes(' ') ? [] : dictionarySuggestions(w);
+      if (suggestions.length) out.push('**Possible matches:** ' + suggestions.map(x => '**' + x + '**').join(', ') + '. Try one of these spellings.');
+      const wp = wordParts(w); if (wp) out.push('Word parts that might help: ' + wp);
       out.push('You can add your own meaning in **Knowledge vault → Add an entry → Definition**; ORACLE will use it in future lookups.');
     }
     if (doc) {
-      const re = new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
-      const s = A(doc).sents.find(x => re.test(x));
-      if (s) out.push(`> On this page: ${clip(s, 260)}`);
+      const re = new RegExp('\\b' + w.replace(/[.*+?^$()|[\]\\]/g, '\\$&') + '\\b', 'i');
+      const sentence = A(doc).sents.find(x => re.test(x));
+      if (sentence) out.push('> On this page: ' + clip(sentence, 260));
     }
     return out.join('\n\n');
   }
