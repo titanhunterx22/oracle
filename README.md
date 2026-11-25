@@ -2,7 +2,7 @@
 
 Everything runs locally. No API keys, no accounts, no server, no analytics.
 ORACLE is a **rule-based toolkit, not an AI language model**: summaries are extracted sentences,
-"simplify" is word-swapping and sentence-splitting, and translation is a small word-by-word glossary. The define feature includes **784 offline English entries** plus definitions you save in your own Vault.
+"simplify" is word-swapping and sentence-splitting, and translation is a small word-by-word glossary. The define feature includes **784 bundled offline English entries**, your own Vault definitions, and optional Open English Wordnet lookups. Online results are cached locally for later offline use.
 
 ## Install (Chrome or Edge)
 1. Unzip `ORACLE.zip`.
@@ -28,12 +28,12 @@ Chat commands: "Summarise this page", "Give me a detailed summary", "What are th
 ## Permissions (and why)
 - `storage` – chat, vault, bookmarks, settings in `chrome.storage.local` (this device only)
 - `tabs` – list/search/switch/close tabs, find duplicates
-- `activeTab`, `scripting` – read a tab that was open before install, when you click the icon
+- `https://en-word.net/*` – optional word-only dictionary lookup when a word is not in the bundled glossary; successful results are cached locally. No page text is sent.\n- `activeTab`, `scripting` – read a tab that was open before install, when you click the icon
 - Content script on `http/https` pages – read page text, selection button, highlighting. Browsers show this as "read data on all websites"; ORACLE never sends it anywhere.
 - The extension's Content Security Policy sets `connect-src 'none'`, so its own pages cannot make network requests.
 
 ## Honest limitations
-- **Definitions** come from a bundled offline English glossary (784 entries), your own Vault "definition" entries, and the page itself. Unknown words get word-part hints, not invented meanings. The glossary is curated rather than exhaustive; it does not claim to define every English word.
+- **Definitions** use your Vault entries first, then the bundled 784-entry offline glossary, then an optional Open English Wordnet lookup. Wordnet results are cached locally (up to 1,500 words) and remain available offline after the first successful lookup. The external source is not exhaustive: slang, new terms, many proper names and specialist terms may still be missing. Only the requested word is sent to en-word.net; page contents are never sent.
 - **Translation** (Spanish/French/German) is a ~80-word glossary, word by word. It ignores grammar.
 - **Fact extraction** lists dates, figures, possible names and claims *as written on the page*; nothing is verified.
 - **Names** are detected from capitalisation and can include false positives.
