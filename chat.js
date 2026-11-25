@@ -85,40 +85,77 @@
       emptyState(); setChips(); scroll();
 
       async function send(text) {
-        text = (text || '').trim(); if (!text || busy) return; busy = true;
-        const ts = Date.now(); bubble('user', text, ts); O.store.pushMessage({ role: 'user', text, ts });
-        const pending = document.createElement('div'); pending.className = 'msg bot'; pending.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>'; log.appendChild(pending); scroll();
-        const pageish = /summar|point|simpl|note|date|fact|flash|quiz|overview|link|heading|keyword|stat|read|explain|compare|find|save|study|what|who|when|how/i.test(text);
-        O.orb.set(pageish ? 'analysing' : 'processing');
-        const t0 = Date.now();
-        let res;
+        text = (text || '').trim();
+        if (!text || busy) return;
+        busy = true;
+        let pending = null;
+        let userText = text;
         try {
-          const intent = O.engine.detect(text.toLowerCase()).id;
-          const useLocalAI = intent === 'none' || intent === 'explain';
-          if (useLocalAI && O.localAI) {
-            let doc = null, selection = '';
-            if (/\\b(selected|selection|highlight)\\b/i.test(text)) {
-              selection = await env.getSelection().catch(() => '');
-            } else if (/\\b(this|current|that|the)\\s+(page|article|website|site|post|text|passage|document)\\b|\\b(on|in|from)\\s+(this|the)\\s+(page|article|website|site|post)\\b/i.test(text)) {
-              doc = await env.getPage().catch(() => null);
+          const ts = Date.now();
+          bubble('user', text, ts);
+          await O.store.pushMessage({ role: 'user', text, ts });
+          pending = document.createElement('div');
+          pending.className = 'msg bot';
+          pending.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+          log.appendChild(pending);
+          scroll();
+
+          const pageish = /summar|point|simpl|note|date|fact|flash|quiz|overview|link|heading|keyword|stat|read|explain|compare|find|save|study|what|who|when|how/i.test(text);
+          O.orb.set(pageish ? 'analysing' : 'processing');
+          const t0 = Date.now();
+          let res;
+          try {
+            const intent = O.engine.detect(text.toLowerCase()).id;
+            const useLocalAI = intent === 'none' || intent === 'explain';
+            if (useLocalAI && O.localAI) {
+              let doc = null, selection = '';
+              if (/\b(selected|selection|highlight)\b/i.test(text)) {
+                selection = await env.getSelection().catch(() => '');
+              } else if (/\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text)) {
+                doc = await env.getPage().catch(() => null);
+              }
+              const answer = await env.askAI(text, doc, selection);
+              res = { text: answer, state: 'responding', intent: 'local-ai', suggestions: O.engine.SUG.default };
+            } else {
+              res = await O.engine.handle(text, env, ctx);
             }
-            const answer = await env.askAI(text, doc, selection);
-            res = { text: answer, state: 'responding', intent: 'local-ai', suggestions: O.engine.SUG.default };
-          } else {
-            res = await O.engine.handle(text, env, ctx);
+          } catch (e) {
+            res = { text: '**Assistant error.** ' + (e && e.message ? e.message : String(e)), state: 'error', suggestions: ['Help'] };
           }
+
+          await sleep(Math.max(0, 450 - (Date.now() - t0)));
+          if (pending) pending.remove();
+          pending = null;
+          if (res && res.clear) {
+            await O.store.clearConversation();
+            log.innerHTML = '';
+            ctx.last = '';
+            emptyState();
+            setChips();
+            O.orb.set('idle');
+            return;
+          }
+
+          const answerText = res && typeof res.text === 'string' ? res.text : 'The assistant returned no response. Please try again.';
+          const err = !res || res.state === 'error';
+          O.orb.set(err ? 'error' : 'responding', err ? 1800 : 0);
+          const b = bubble('bot', '', Date.now(), err);
+          await typeIn(b.body, answerText);
+          await O.store.pushMessage({ role: 'bot', text: answerText, ts: Date.now(), err });
+          ctx.last = answerText;
+          setChips(res && res.suggestions);
+          if (!err) O.orb.set('idle');
         } catch (e) {
-          res = { text: '**Local AI / assistant error.** ' + (e && e.message ? e.message : String(e)), state: 'error', suggestions: ['Help'] };
+          if (pending) pending.remove();
+          const message = '**Chat error.** ' + (e && e.message ? e.message : String(e));
+          try {
+            const b = bubble('bot', '', Date.now(), true);
+            b.body.textContent = message;
+          } catch (_) { /* Keep the chat unlocked even if rendering failed. */ }
+          O.orb.set('error', 1800);
+        } finally {
+          busy = false;
         }
-        await sleep(Math.max(0, 450 - (Date.now() - t0)));
-        pending.remove();
-        if (res.clear) { await O.store.clearConversation(); log.innerHTML = ''; ctx.last = ''; emptyState(); setChips(); O.orb.set('idle'); busy = false; return; }
-        const err = res.state === 'error';
-        O.orb.set(err ? 'error' : 'responding', err ? 1800 : 0);
-        const b = bubble('bot', '', Date.now(), err); await typeIn(b.body, res.text);
-        const rts = Date.now(); O.store.pushMessage({ role: 'bot', text: res.text, ts: rts, err });
-        ctx.last = res.text; setChips(res.suggestions);
-        if (!err) O.orb.set('idle'); busy = false;
       }
 
       o.form.addEventListener('submit', e => { e.preventDefault(); const v = o.input.value; o.input.value = ''; send(v); });
