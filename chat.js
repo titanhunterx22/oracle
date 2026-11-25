@@ -24,6 +24,16 @@
         async find(term) { const t = await O.tools.targetTab(tabId()); if (!t) throw new Error('No readable tab found.'); const r = await O.tools.send(t.id, { type: 'oracle:find', term }); return r || { count: 0 }; },
         vaultSearch: q => O.store.searchVault(q),
         vaultDefs: async () => (await O.store.vault()).filter(e => e.type === 'definition'),
+        async lookupDefinition(word) {
+          const result = await chrome.runtime.sendMessage({ type: 'oracle:dictionaryLookup', word });
+          if (!result || !result.ok || !result.senses || !result.senses.length) return null;
+          const senses = result.senses.map((sense, i) => {
+            const pos = sense.pos ? ' *(' + sense.pos + ')*' : '';
+            const examples = (sense.examples || []).map(example => '> Example: “' + example + '”').join('\\n');
+            return (i + 1) + '. ' + sense.definition + pos + (examples ? '\\n' + examples : '');
+          }).join('\\n\\n');
+          return '**' + word + '**\\n\\n' + senses + '\\n\\n> Source: Open English Wordnet (CC BY 4.0). This definition was saved locally for future offline lookups.';
+        },
         async savePage(kind) {
           const t = await O.tools.targetTab(tabId()); if (!t) throw new Error('No readable tab found.');
           if (kind === 'bookmark') { await O.tools.bookmarkPage(t.id, 'Read later'); return `Bookmarked **${t.title || t.url}** under “Read later”.`; }
