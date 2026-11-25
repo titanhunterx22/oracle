@@ -20,8 +20,8 @@
   ].join(' ');
 
   // Keep prompts small enough for the low-memory 2K KV cache configured in the worker.
-  const PAGE_LIMIT = 2600;
-  const SELECTION_LIMIT = 2600;
+  const PAGE_LIMIT = 2200;
+  const SELECTION_LIMIT = 2200;
   let engine = null;
   let worker = null;
   let loading = null;
@@ -182,15 +182,15 @@
   function historyMessages(history) {
     // Limit carried conversation history to leave room for the current prompt and
     // generated answer inside the 2K context window.
-    return (Array.isArray(history) ? history.slice(-3) : []).map(item => {
+    return (Array.isArray(history) ? history.slice(-2) : []).map(item => {
       if (!item || !item.text || item.err) return null;
       const role = item.role === 'user' ? 'user' : (item.role === 'bot' || item.role === 'assistant') ? 'assistant' : null;
-      return role ? { role, content: String(item.text).slice(0, 360) } : null;
+      return role ? { role, content: String(item.text).slice(0, 300) } : null;
     }).filter(Boolean);
   }
 
   function makeUserPrompt(question, options) {
-    const safeQuestion = String(question || '').trim().slice(0, 1200);
+    const safeQuestion = String(question || '').trim().slice(0, 1000);
     const selection = String(options.selection || '').trim();
     if (selection) {
       return 'The user asks: ' + safeQuestion +
