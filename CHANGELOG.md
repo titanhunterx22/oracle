@@ -1,9 +1,7 @@
-# ORACLE 1.0.5
+# ORACLE 1.0.6
 
-- Added Microsoft Edge support for the browser-provided Prompt API using Edge's documented availability and session options.
-- Updated Local AI status messages and Settings guidance for Edge and Chrome.
-- Documented Edge Dev/Canary Prompt API setup, on-device AI settings, and device eligibility.
-- Kept the same Manifest V3 extension package and existing local-only browser tools for both Edge and Chrome.
+- Restored the Chrome-only Local AI adapter using Chrome's built-in Prompt API and Gemini Nano.
+- Removed Edge-specific AI setup and browser guidance; the extension is documented for Google Chrome again.
 
 # ORACLE 1.0.3\n\n- Added optional Open English Wordnet fallback for words missing from the bundled glossary. Successful definitions are cached locally for offline reuse; only the requested word is sent to the dictionary service.\n
 
