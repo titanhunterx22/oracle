@@ -1,5 +1,7 @@
 # ORACLE 1.0.3
 
+- Improved offline definitions with broader inflection handling (including common plural, past-tense and comparative forms) and local spelling suggestions for likely typos.
+
 - Redesigned the full dashboard with a unified dark interface, clearer typography, structured navigation, consistent cards, improved forms and responsive layouts.
 - Refined the popup with a compact brand header, clearer quick actions, improved chat surface and matching controls.
 - Reorganised Settings into visual groups for appearance, shortcuts, privacy, permissions and local data management.
