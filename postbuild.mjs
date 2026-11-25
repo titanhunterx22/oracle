@@ -16,7 +16,7 @@ try {
 }
 
 function resolveAsset(src) {
-  const clean = decodeURIComponent(String(src).split(/[?#]/, 1)[0]).replace(/^\\/+/, "");
+  const clean = decodeURIComponent(String(src).split(/[?#]/, 1)[0]).replace(/^\/+/, "");
   const file = path.resolve(root, clean);
   if (file !== root && !file.startsWith(root + path.sep)) throw new Error("Asset outside dist/: " + src);
   return file;
@@ -31,7 +31,12 @@ async function isolateClassicScript(src) {
   try { code = await fs.readFile(file, "utf8"); }
   catch { throw new Error("Classic script missing from dist/: " + src); }
   if (code.startsWith(MARKER)) return;
-  await fs.writeFile(file, MARKER + "\\n(function () {\\n" + code + "\\n})();\\n", "utf8");
+  // Chromium executes each manifest content-script file in the same isolated-world
+  // global scope. HTML classic scripts also share the page global scope. Parcel's
+  // minifier can lift IIFE locals into top-level let declarations, so otherwise
+  // unrelated bundles can collide. Isolate each classic bundle while retaining the
+  // shared window/self ORACLE namespace.
+  await fs.writeFile(file, MARKER + "\n(function () {\n" + code + "\n})();\n", "utf8");
 }
 
 async function walk(dir) {
@@ -47,10 +52,10 @@ async function walk(dir) {
 
 for (const htmlFile of (await walk(root)).filter(file => file.endsWith(".html"))) {
   const html = await fs.readFile(htmlFile, "utf8");
-  for (const match of html.matchAll(/<script\\b([^>]*)>/gi)) {
+  for (const match of html.matchAll(/<script\b([^>]*)>/gi)) {
     const attrs = match[1];
-    const srcMatch = attrs.match(/\\bsrc\\s*=\\s*[\"']([^\"']+)[\"']/i);
-    if (!srcMatch || /\\btype\\s*=\\s*[\"']module[\"']/i.test(attrs)) continue;
+    const srcMatch = attrs.match(/\bsrc\s*=\s*["']([^"']+)["']/i);
+    if (!srcMatch || /\btype\s*=\s*["']module["']/i.test(attrs)) continue;
     await isolateClassicScript(srcMatch[1]);
   }
 }
