@@ -61,5 +61,8 @@
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none'"
-  }
+  },
+  "host_permissions": [
+    "https://en-word.net/*"
+  ]
 }
