@@ -241,7 +241,7 @@
   aiPrepare.onclick = async () => {
     aiPrepare.disabled = true;
     aiPrepare.textContent = 'Preparing…';
-    aiStatus.textContent = 'Starting this browser’s on-device model…';
+    aiStatus.textContent = 'Starting Chrome’s on-device model…';
     try {
       await O.localAI.prepare(percent => {
         aiStatus.textContent = percent >= 100 ? 'Finishing model setup…' : ('Downloading model: ' + percent + '%');
