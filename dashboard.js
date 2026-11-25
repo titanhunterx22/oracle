@@ -235,16 +235,17 @@
     const info = await O.localAI.status();
     aiStatus.textContent = info.message;
     aiPrepare.disabled = info.state === 'unsupported' || info.state === 'unavailable';
-    aiPrepare.textContent = info.state === 'available' ? 'Load local AI' : 'Download & enable local AI';
+    aiPrepare.textContent = info.state === 'available' ? 'Local AI loaded' : info.state === 'cached' ? 'Load cached model' : 'Download & prepare model';
   }
   refreshLocalAIStatus().catch(e => { aiStatus.textContent = e.message || String(e); });
   aiPrepare.onclick = async () => {
     aiPrepare.disabled = true;
     aiPrepare.textContent = 'Preparing…';
-    aiStatus.textContent = 'Starting Chrome’s on-device model…';
+    aiStatus.textContent = 'Checking WebGPU and preparing the local model…';
     try {
-      await O.localAI.prepare(percent => {
-        aiStatus.textContent = percent >= 100 ? 'Finishing model setup…' : ('Downloading model: ' + percent + '%');
+      await O.localAI.prepare((percent, detail) => {
+        const label = detail || (percent >= 100 ? 'Finishing model setup' : 'Preparing local model');
+        aiStatus.textContent = percent >= 100 ? (label + ' (finalising…)') : (label + ' · ' + percent + '%');
       });
       aiStatus.textContent = 'Local AI is ready. Ask ORACLE an open-ended question in Chat.';
       aiPrepare.textContent = 'Local AI ready';
@@ -254,7 +255,9 @@
     } finally {
       aiPrepare.disabled = false;
       const current = await O.localAI.status().catch(() => ({ state: 'unsupported' }));
-      if (current.state === 'available') aiPrepare.textContent = 'Load local AI';
+      if (current.state === 'available') aiPrepare.textContent = 'Local AI loaded';
+      else if (current.state === 'cached') aiPrepare.textContent = 'Load cached model';
+      else aiPrepare.textContent = 'Download & prepare model';
       if (current.state === 'unsupported' || current.state === 'unavailable') aiPrepare.disabled = true;
     }
   };

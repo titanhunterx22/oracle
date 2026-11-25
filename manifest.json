@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "ORACLE",
-  "version": "1.0.6",
-  "description": "A private Google Chrome companion with optional on-device AI, page analysis, study tools, tab manager and knowledge vault. No paid API keys or AI servers.",
-  "minimum_chrome_version": "111",
+  "version": "1.1.0",
+  "description": "A private Chromium browser companion with local page tools and optional WebGPU-powered AI. No paid API keys or AI servers.",
+  "minimum_chrome_version": "113",
   "icons": {
     "16": "icon16.png",
     "32": "icon32.png",
@@ -60,9 +60,13 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none'"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self' blob:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co"
   },
   "host_permissions": [
-    "https://en-word.net/*"
+    "https://en-word.net/*",
+    "https://huggingface.co/*",
+    "https://*.huggingface.co/*",
+    "https://raw.githubusercontent.com/*",
+    "https://*.xethub.hf.co/*"
   ]
 }

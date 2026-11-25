@@ -1,3 +1,12 @@
+# ORACLE 1.1.0
+
+- Replaced the Chrome-only Prompt API/Gemini Nano adapter with WebLLM, a shared Chromium implementation using WebGPU.
+- Added a dedicated Web Worker so model loading and inference do not block the popup or dashboard UI.
+- Added the Qwen 2.5 0.5B quantised model, first-run download progress, GPU availability checks, local model caching and clear unsupported-device errors.
+- Added a reproducible Parcel build, build verification, and a GitHub Actions artifact containing a ready-to-install extension for Edge and Chrome.
+- Updated model download permissions and extension CSP for the Hugging Face/MLC model files and WebAssembly runtime.
+- Updated Edge/Chrome installation and privacy documentation. Page content and prompts remain local during inference; only model files are downloaded.
+
 # ORACLE 1.0.6
 
 - Restored the Chrome-only Local AI adapter using Chrome's built-in Prompt API and Gemini Nano.

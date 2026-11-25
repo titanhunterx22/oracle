@@ -1,57 +1,75 @@
-# ORACLE — private browser companion (Google Chrome, Manifest V3)
+# ORACLE — private Chromium browser companion
 
-Everything runs locally. No API keys, no accounts, no server, no analytics.
-ORACLE combines deterministic page tools with optional **on-device AI reasoning**. When supported, Chrome’s built-in Gemini Nano model can answer open-ended questions without a paid API key or external AI server. Summaries, fact extraction, study tools and dictionary lookups continue to use ORACLE’s local processing. The define feature includes **784 bundled offline English entries**, your own Vault definitions, and optional Open English Wordnet lookups. Online results are cached locally for later offline use.
+ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. Its page analysis, dictionary, study tools, tab manager and Knowledge Vault run locally. Optional open-ended AI uses **WebLLM + WebGPU** with a small Qwen model; there are no paid API keys, accounts, analytics or ORACLE AI servers.
 
-## Install (Google Chrome)
-1. Unzip `ORACLE.zip`.
-2. Open `chrome://extensions` and switch on **Developer mode**.
-3. Click **Load unpacked** and choose the `ORACLE` folder (the one containing `manifest.json`).
-4. Pin the ORACLE icon. Reload any tabs that were already open (or just click the icon: ORACLE can inject itself into the tab you're on).
+## Install the ready-built extension (recommended)
 
-## Using it
-| What | How |
+1. Open the [ORACLE GitHub Actions page](https://github.com/titanhunterx22/oracle/actions).
+2. Open the latest successful **Build ORACLE extension** workflow run.
+3. Under **Artifacts**, download **ORACLE-browser-extension** and extract the ZIP.
+4. In Microsoft Edge, open `edge://extensions`; in Google Chrome, open `chrome://extensions`.
+5. Turn on **Developer mode**, select **Load unpacked**, and choose the extracted folder containing `manifest.json`.
+6. Pin ORACLE to the toolbar and reload tabs that were already open.
+
+The workflow artifact already contains the bundled WebLLM runtime and worker. Node.js is not required to install it.
+
+## Install from source
+
+Requires Node.js 22 or newer. From the repository folder:
+
+```bash
+npm install
+npm run build:check
+``
+
+Then load the generated `dist` folder through `edge://extensions` or `chrome://extensions` → **Load unpacked**. The build uses Parcel's WebExtension configuration to bundle the WebLLM runtime and dedicated worker inside the extension, as required by Manifest V3's extension-page security policy.
+
+## Using ORACLE
+
+| Feature | How |
 |---|---|
-| Popup chat + quick actions | Click the icon, or `Ctrl+Shift+O` (`Cmd+Shift+O` on Mac) |
-| Command palette on any page | `Ctrl+Shift+K` (`Cmd+Shift+K`). Also `Ctrl+K` inside the dashboard |
-| Selected-text assistant | Highlight text on a page, then click the glowing ORACLE button |
-| Full dashboard | Popup → **Dashboard** |
-| Offline dictionary | Dashboard → **Text assistant** → enter a word, or ask `Define <word>` in chat |
-| Local AI reasoning | Dashboard → **Settings** → **Local AI reasoning** → Download & enable local AI; then ask open-ended questions in Chat |
-| Change shortcuts | `chrome://extensions/shortcuts` |
+| Popup chat and quick actions | Click the icon, or `Ctrl+Shift+O` (`Cmd+Shift+O` on Mac) |
+| Command palette | `Ctrl+Shift+K` (`Cmd+Shift+K` on Mac) |
+| Selected-text assistant | Highlight text on a page, then click the ORACLE selection button |
+| Full dashboard | Open the popup → **Dashboard** |
+| Local AI setup | Dashboard → **Settings** → **Local AI reasoning** → **Download & prepare model** |
+| Offline dictionary | Dashboard → **Text assistant**, or ask `Define <word>` |
+| Change keyboard shortcuts | `edge://extensions/shortcuts` or `chrome://extensions/shortcuts` |
 
-Chat commands: "Summarise this page", "Give me a detailed summary", "What are the main points?", "Explain that more simply",
-"Turn this into revision notes", "Find the important dates", "Create flashcards", "Quiz me", "Define <word>",
-"Find <text> on this page", "Show page overview", "How long to read this?", "List the links", "Show my tabs",
-"Save this page", "Search my vault for <topic>". Any other question about the page returns the best-matching passages.
+Example requests: “Summarise this page”, “What are the main points?”, “Explain this simply”, “Find the important dates”, “Create flashcards”, “Quiz me”, “Define photosynthesis”, “Find this phrase on the page”, “Show my tabs”, and “Save this page”. Open-ended questions use Local AI once it has been prepared. Existing deterministic page tools continue to work without WebGPU.
 
-## Permissions (and why)
-- `storage` – chat, vault, bookmarks, settings in `chrome.storage.local` (this device only)
-- `tabs` – list/search/switch/close tabs, find duplicates
-- `https://en-word.net/*` – optional word-only dictionary lookup when a word is not in the bundled glossary; successful results are cached locally. No page text is sent.\n- `activeTab`, `scripting` – read a tab that was open before install, when you click the icon
-- Content script on `http/https` pages – read page text, selection button, highlighting. Browsers show this as "read data on all websites"; ORACLE never sends it anywhere.
-- The extension's Content Security Policy sets `connect-src 'none'`, so its own pages cannot make network requests.
+## Local AI: WebLLM + Qwen 2.5 0.5B
 
-## Local AI setup
-The optional Local AI feature uses Chrome’s built-in Prompt API and Gemini Nano. It is available in supported versions of **Google Chrome** (Chrome 138+ for extension use), not supported in Edge or other Chromium browsers. Open Dashboard → Settings → Local AI reasoning and click **Download & enable local AI**. Chrome downloads its model the first time; after setup, prompts run on-device and do not need a network connection or paid API key. The model has hardware and storage requirements; see [Chrome’s current requirements](https://developer.chrome.com/docs/ai/prompt-api). It can reason and explain from its learned knowledge, but it can still make mistakes and does not know live/current facts unless you provide them. If Local AI is unavailable, ORACLE falls back to its existing tools.
+ORACLE bundles the WebLLM JavaScript runtime into the extension and runs inference in a **dedicated Web Worker** using WebGPU. It uses the `Qwen2.5-0.5B-Instruct-q4f16_1-MLC` model. This is a deliberately small quantised model intended to reduce hardware requirements; it is not as capable as a large cloud model and may make mistakes.
+
+On first setup, open Dashboard → Settings → Local AI reasoning and select **Download & prepare model**. An internet connection is needed to download the model files from Hugging Face/MLC. WebLLM caches the model locally; later sessions can load the cached model without downloading it again unless browser storage is cleared or evicted. Generation itself happens locally. ORACLE does not send prompts, selected text, webpage content or answers to an AI server.
+
+A compatible WebGPU browser, GPU/driver and sufficient graphics memory are required. Use a current stable release of Edge or Chrome. No experimental browser flags or paid API keys are required. In Edge, `edge://gpu` can help diagnose WebGPU support; also check that hardware acceleration is enabled and the graphics driver is current. If no compatible GPU adapter is available, Local AI is disabled and ORACLE's other tools remain available.
+
+The model has no live internet access. Do not rely on it for live/current facts, and check important answers independently.
+
+## Permissions and privacy
+
+- `storage` — chat, vault, bookmarks, settings and the local-model setup marker in browser storage.
+- `tabs` — list, search, switch and close tabs.
+- `activeTab`, `scripting` — read the active page when you invoke ORACLE.
+- Content script on HTTP/HTTPS pages — page extraction, selection helper, highlighting and the command palette.
+- `https://en-word.net/*` — optional word-only dictionary lookup when a term is not in the bundled glossary; only the requested word is sent and successful results are cached.
+- Hugging Face/MLC model hosts — download model weights and the WebGPU model library during setup. These hosts are not used to send user prompts or page content.
+
+The extension CSP allows only packaged scripts/WebAssembly and the specific model-download origins. ORACLE has no application backend, accounts, telemetry or paid AI API.
 
 ## Honest limitations
-- **Definitions** use your Vault entries first, then the bundled 784-entry offline glossary, then an optional Open English Wordnet lookup. Wordnet results are cached locally (up to 500 words) and remain available offline after the first successful lookup. The external source is not exhaustive: slang, new terms, many proper names and specialist terms may still be missing. Only the requested word is sent to en-word.net; page contents are never sent. Open English Wordnet is derived from Princeton WordNet and distributed by its community under CC BY 4.0; attribution is due to both sources.
-- **Translation** (Spanish/French/German) is a ~80-word glossary, word by word. It ignores grammar.
-- **Fact extraction** lists dates, figures, possible names and claims *as written on the page*; nothing is verified. Local AI answers can also be wrong and are not a substitute for checking important claims.
-- **Names** are detected from capitalisation and can include false positives.
-- Browser pages (`chrome://`, the Web Store, built-in PDF viewer) can't be read by any extension.
-- Highlighting "important passages" only marks sentences that sit inside a single text node.
 
-## Files
-`CHANGELOG.md` · `manifest.json` · `background.js` (shortcut + dashboard opener) · `content.js` (extraction, selection helper, reader, find/highlight, palette) ·
-`dictionary.js` (offline English definitions) · `local-ai.js` (Chrome on-device model adapter) · `engine.js` (NLP + intent router) · `tools.js` (tabs/messaging/compare) · `chat.js` · `palette.js` · `orb.js` ·
-`popup.*` · `dashboard.*` · `common.css` · `assets/` (icons)
+- WebGPU availability depends on browser version, operating system, GPU, drivers and available graphics memory. A WebGPU adapter check does not guarantee every model will initialise successfully.
+- Qwen 2.5 0.5B is compact and can be less reliable than larger models. It can hallucinate and has no live web access.
+- The bundled offline English glossary contains 784 entries. Optional Open English Wordnet lookups can fill some gaps; only the requested word is sent, and results are cached locally.
+- Spanish/French/German translation uses a small word-by-word glossary and does not preserve grammar.
+- Fact extraction lists information as written on a page; it does not independently verify claims.
+- Browser-internal pages, extension stores and some built-in PDF viewer pages cannot be read by extensions.
 
+## Project files
 
-## Page access troubleshooting (v1.0.2)
-ORACLE first asks its content script for readable page blocks. If that response is empty or incomplete, it now retries with a direct local DOM extractor. The fallback also reads visible text from modern pages that use custom div-based layouts rather than standard paragraphs. Browser-internal pages, extension stores and PDF viewer tabs remain restricted by Chrome.
+`local-ai.js` — Local AI adapter and UI-facing API; `webllm-client.entry.js` and `webllm-worker.entry.js` — WebLLM client/worker build entries; `engine.js` — deterministic NLP and intent router; `chat.js` — shared popup/dashboard chat; `content.js` — page extraction and selection tools; `dictionary.js` — offline English glossary; `storage.js` — local persistence; `tools.js` — tabs and page messaging; `dashboard.*` and `popup.*` — user interface.
 
-
-## Visual refresh (v1.0.3)
-The dashboard, navigation, chat, text assistant, Knowledge Vault, browser tools, Settings and toolbar popup use a unified visual system. The redesign is presentation-only and retains the existing feature workflows and local-only processing.
+For detailed Edge-specific install and troubleshooting steps, see [EDGE_SETUP.md](EDGE_SETUP.md). See [CHANGELOG.md](CHANGELOG.md) for release history.
