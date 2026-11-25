@@ -9,7 +9,7 @@ try {
 } catch {
   const entries = await fs.readdir(root, { withFileTypes: true });
   const dashboardBundle = entries
-    .filter(entry => entry.isFile() && /^dashboard\\.[a-f0-9]+\\.html$/i.test(entry.name))
+    .filter(entry => entry.isFile() && entry.name.startsWith("dashboard.") && entry.name.endsWith(".html"))
     .map(entry => path.join(root, entry.name))[0];
   if (!dashboardBundle) {
     throw new Error("Parcel did not emit the dashboard HTML entry. Check the dashboard.html build entry.");
