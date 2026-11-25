@@ -2,7 +2,14 @@
 (function (g) {
   'use strict';
   const O = (g.ORACLE = g.ORACLE || {});
-  const FILES = ['dictionary.js', 'engine.js', 'storage.js', 'palette.js', 'content.js'];
+  const contentScriptFiles = () => {
+    try {
+      const manifest = chrome.runtime.getManifest();
+      return (manifest.content_scripts || []).flatMap(entry => entry.js || []);
+    } catch (error) {
+      return [];
+    }
+  };
   const isWeb = u => /^https?:/i.test(u || '');
   const NOREAD = 'This page cannot be read by browser extensions. Try a normal HTTP/HTTPS webpage and click ORACLE while that page is active.';
   // Self-contained fallback: runs locally in the target page when its content script is unavailable.
@@ -98,7 +105,7 @@
     async send(tabId, msg) {
       try { return await chrome.tabs.sendMessage(tabId, msg); }
       catch (e) {
-        try { await chrome.scripting.executeScript({ target: { tabId }, files: FILES }); return await chrome.tabs.sendMessage(tabId, msg); }
+        try { await chrome.scripting.executeScript({ target: { tabId }, files: contentScriptFiles() }); return await chrome.tabs.sendMessage(tabId, msg); }
         catch (e2) { throw new Error(NOREAD); }
       }
     },
