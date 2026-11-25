@@ -24,6 +24,30 @@
   let engine = null;
   let worker = null;
   let loading = null;
+  let resolveRuntimeReady;
+  const runtimeReady = new Promise(resolve => { resolveRuntimeReady = resolve; });
+  g.ORACLE_WEBLLM_READY = runtimeReady;
+  g.ORACLE_WEBLLM_READY_RESOLVE = runtime => {
+    if (runtime) {
+      g.ORACLE_WEBLLM = runtime;
+      resolveRuntimeReady(runtime);
+    }
+  };
+
+  async function getRuntime() {
+    if (g.ORACLE_WEBLLM && typeof g.ORACLE_WEBLLM.createEngine === 'function') return g.ORACLE_WEBLLM;
+    if (!g.ORACLE_WEBLLM_READY) throw new Error('The bundled WebLLM client is missing. Rebuild and reload ORACLE.');
+    return new Promise((resolve, reject) => {
+      const timer = g.setTimeout(() => reject(new Error('The bundled WebLLM runtime did not finish loading. Reload ORACLE and try again.')), 15000);
+      g.ORACLE_WEBLLM_READY.then(runtime => {
+        g.clearTimeout(timer);
+        resolve(runtime);
+      }, error => {
+        g.clearTimeout(timer);
+        reject(error);
+      });
+    });
+  }
 
   function storageGet(key) {
     return new Promise(resolve => {
@@ -80,10 +104,7 @@
   async function createEngine(onProgress) {
     if (engine) return engine;
     if (loading) return loading;
-    const runtime = g.ORACLE_WEBLLM;
-    if (!runtime || typeof runtime.createEngine !== 'function') {
-      throw new Error('The bundled WebLLM runtime did not load. Reload ORACLE; if you installed from source, run npm install and npm run build first.');
-    }
+    const runtime = await getRuntime();
 
     loading = (async () => {
       const created = await runtime.createEngine(MODEL_ID, report => {

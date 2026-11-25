@@ -19,3 +19,7 @@ async function createEngine(modelId, initProgressCallback) {
 }
 
 globalThis.ORACLE_WEBLLM = { createEngine };
+if (typeof globalThis.ORACLE_WEBLLM_READY_RESOLVE === "function") {
+  globalThis.ORACLE_WEBLLM_READY_RESOLVE(globalThis.ORACLE_WEBLLM);
+  delete globalThis.ORACLE_WEBLLM_READY_RESOLVE;
+}
