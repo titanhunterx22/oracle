@@ -33,7 +33,7 @@ Chat commands: "Summarise this page", "Give me a detailed summary", "What are th
 - The extension's Content Security Policy sets `connect-src 'none'`, so its own pages cannot make network requests.
 
 ## Honest limitations
-- **Definitions** use your Vault entries first, then the bundled 784-entry offline glossary, then an optional Open English Wordnet lookup. Wordnet results are cached locally (up to 1,500 words) and remain available offline after the first successful lookup. The external source is not exhaustive: slang, new terms, many proper names and specialist terms may still be missing. Only the requested word is sent to en-word.net; page contents are never sent.
+- **Definitions** use your Vault entries first, then the bundled 784-entry offline glossary, then an optional Open English Wordnet lookup. Wordnet results are cached locally (up to 500 words) and remain available offline after the first successful lookup. The external source is not exhaustive: slang, new terms, many proper names and specialist terms may still be missing. Only the requested word is sent to en-word.net; page contents are never sent. Open English Wordnet is derived from Princeton WordNet and distributed by its community under CC BY 4.0; attribution is due to both sources.
 - **Translation** (Spanish/French/German) is a ~80-word glossary, word by word. It ignores grammar.
 - **Fact extraction** lists dates, figures, possible names and claims *as written on the page*; nothing is verified.
 - **Names** are detected from capitalisation and can include false positives.
