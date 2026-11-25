@@ -1,6 +1,6 @@
 # ORACLE — private Chromium browser companion
 
-ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. Its page analysis, dictionary, study tools, tab manager and Knowledge Vault run locally. Optional open-ended AI uses **WebLLM + WebGPU** with a small Qwen model; there are no paid API keys, accounts, analytics or ORACLE AI servers.
+ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. Its page analysis, dictionary, study tools, tab manager and Knowledge Vault run locally. Optional open-ended AI uses **WebLLM + WebGPU** with a compact low-memory model; there are no paid API keys, accounts, analytics or ORACLE AI servers.
 
 ## Install the ready-built extension (recommended)
 
@@ -38,9 +38,9 @@ Then load the generated `dist` folder through `edge://extensions` or `chrome://e
 
 Example requests: “Summarise this page”, “What are the main points?”, “Explain this simply”, “Find the important dates”, “Create flashcards”, “Quiz me”, “Define photosynthesis”, “Find this phrase on the page”, “Show my tabs”, and “Save this page”. Open-ended questions use Local AI once it has been prepared. Existing deterministic page tools continue to work without WebGPU.
 
-## Local AI: WebLLM + Qwen 2.5 0.5B
+## Local AI: WebLLM + SmolLM2 360M
 
-ORACLE bundles the WebLLM JavaScript runtime into the extension and runs inference in a **dedicated Web Worker** using WebGPU. It uses the `Qwen2.5-0.5B-Instruct-q4f16_1-MLC` model. This is a deliberately small quantised model intended to reduce hardware requirements; it is not as capable as a large cloud model and may make mistakes.
+ORACLE bundles the WebLLM JavaScript runtime into the extension and runs inference in a **dedicated Web Worker** using WebGPU. It uses the `SmolLM2-360M-Instruct-q4f32_1-MLC` model, configured with a 1,024-token context and a short response limit to reduce GPU memory pressure. WebLLM estimates about 580 MB of VRAM for this model. It is significantly smaller and less capable than larger models and may make mistakes, but is intended to improve compatibility on integrated GPUs.
 
 On first setup, open Dashboard → Settings → Local AI reasoning and select **Download & prepare model**. An internet connection is needed to download the model files from Hugging Face/MLC. WebLLM caches the model locally; later sessions can load the cached model without downloading it again unless browser storage is cleared or evicted. Generation itself happens locally. ORACLE does not send prompts, selected text, webpage content or answers to an AI server.
 
@@ -62,7 +62,7 @@ The extension CSP allows only packaged scripts/WebAssembly and the specific mode
 ## Honest limitations
 
 - WebGPU availability depends on browser version, operating system, GPU, drivers and available graphics memory. A WebGPU adapter check does not guarantee every model will initialise successfully.
-- Qwen 2.5 0.5B is compact and can be less reliable than larger models. It can hallucinate and has no live web access.
+- SmolLM2 360M is very compact and less capable than larger models. It can hallucinate and has no live web access.
 - The bundled offline English glossary contains 784 entries. Optional Open English Wordnet lookups can fill some gaps; only the requested word is sent, and results are cached locally.
 - Spanish/French/German translation uses a small word-by-word glossary and does not preserve grammar.
 - Fact extraction lists information as written on a page; it does not independently verify claims.

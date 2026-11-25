@@ -6,7 +6,7 @@
   'use strict';
 
   const O = (g.ORACLE = g.ORACLE || {});
-  const MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
+  const MODEL_ID = 'SmolLM2-360M-Instruct-q4f32_1-MLC';
   const SETUP_KEY = 'oracleWebLLMPreparedModel';
   const SYSTEM = [
     'You are ORACLE, a helpful and thoughtful assistant running locally on the user’s device.',
@@ -19,9 +19,9 @@
     'Use readable Markdown. Be friendly, accurate, and honest.'
   ].join(' ');
 
-  // Keep prompts small enough for the low-memory 2K KV cache configured in the worker.
-  const PAGE_LIMIT = 2200;
-  const SELECTION_LIMIT = 2200;
+  // Keep the prompt small for the 1K context window and low-memory GPU profile.
+  const PAGE_LIMIT = 900;
+  const SELECTION_LIMIT = 900;
   let engine = null;
   let worker = null;
   let loading = null;
@@ -85,7 +85,7 @@
 
   async function status() {
     if (engine) {
-      return { state: 'available', message: 'The Qwen 2.5 0.5B local model is loaded and ready in this ORACLE window.' };
+      return { state: 'available', message: 'The SmolLM2 360M low-memory local model is loaded and ready in this ORACLE window.' };
     }
     const gpu = await gpuStatus();
     if (gpu.state !== 'ready') return { state: gpu.state, message: gpu.message };
@@ -98,7 +98,7 @@
     }
     return {
       state: 'downloadable',
-      message: 'WebGPU is ready. The first setup downloads the Qwen 2.5 0.5B model; an internet connection and sufficient GPU memory are required. Your prompts stay on this device.'
+      message: 'WebGPU is ready. The first setup downloads the smaller SmolLM2 360M model. It is designed for lower-memory GPUs; your prompts stay on this device.'
     };
   }
 
@@ -131,22 +131,24 @@
   async function createEngine(onProgress, skipNetworkCheck) {
     if (engine) return engine;
     if (loading) return loading;
-    const runtime = await getRuntime();
 
+    // Set the shared promise before the first await so rapid button/chat actions
+    // cannot accidentally initialise two GPU model workers at the same time.
     loading = (async () => {
+      const runtime = await getRuntime();
       if (!skipNetworkCheck) await checkModelDownloadAccess(onProgress);
       let created;
       try {
         created = await runtime.createEngine(MODEL_ID, report => {
           if (typeof onProgress !== 'function') return;
           const progress = Math.max(0, Math.min(100, Math.round(Number(report && report.progress || 0) * 100)));
-          onProgress(progress, report && report.text ? String(report.text) : 'Preparing model');
+          onProgress(progress, report && report.text ? String(report.text) : 'Preparing the low-memory local model');
         });
       } catch (error) {
         const detail = error && error.message ? error.message : String(error);
         if (/failed to fetch|networkerror|load failed/i.test(detail)) {
           throw new Error(
-            'The browser could reach the model configuration, but a model weight or WebGPU library download failed. ORACLE now allows Hugging Face CDN and EU storage hosts. Check that hf.co and huggingface.co are not blocked by your network, VPN or security software, then try again. Technical detail: ' + detail
+            'The browser could reach the model configuration, but a model weight or WebGPU library download failed. Check that hf.co and huggingface.co are not blocked by your network, VPN or security software. Technical detail: ' + detail
           );
         }
         throw error;
@@ -180,17 +182,16 @@
   }
 
   function historyMessages(history) {
-    // Limit carried conversation history to leave room for the current prompt and
-    // generated answer inside the 2K context window.
-    return (Array.isArray(history) ? history.slice(-2) : []).map(item => {
+    // Carry only one short previous turn; the 1K context is intentionally conservative.
+    return (Array.isArray(history) ? history.slice(-1) : []).map(item => {
       if (!item || !item.text || item.err) return null;
       const role = item.role === 'user' ? 'user' : (item.role === 'bot' || item.role === 'assistant') ? 'assistant' : null;
-      return role ? { role, content: String(item.text).slice(0, 300) } : null;
+      return role ? { role, content: String(item.text).slice(0, 180) } : null;
     }).filter(Boolean);
   }
 
   function makeUserPrompt(question, options) {
-    const safeQuestion = String(question || '').trim().slice(0, 1000);
+    const safeQuestion = String(question || '').trim().slice(0, 500);
     const selection = String(options.selection || '').trim();
     if (selection) {
       return 'The user asks: ' + safeQuestion +
@@ -256,7 +257,7 @@
           stream: true,
           temperature: 0.65,
           top_p: 0.9,
-          max_tokens: 320
+          max_tokens: 160
         });
         answer = '';
         for await (const chunk of stream) {
