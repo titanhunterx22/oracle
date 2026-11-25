@@ -229,6 +229,36 @@
 
   /* ───── settings ───── */
   $('#sPart').checked = st.particles; $('#sType').checked = st.typing; $('#sCalm').checked = st.reduceMotion;
+  const aiStatus = $('#aiStatus'), aiPrepare = $('#aiPrepare');
+  async function refreshLocalAIStatus() {
+    if (!O.localAI) { aiStatus.textContent = 'Local AI component did not load. Reload ORACLE.'; aiPrepare.disabled = true; return; }
+    const info = await O.localAI.status();
+    aiStatus.textContent = info.message;
+    aiPrepare.disabled = info.state === 'unsupported' || info.state === 'unavailable';
+    aiPrepare.textContent = info.state === 'available' ? 'Load local AI' : 'Download & enable local AI';
+  }
+  refreshLocalAIStatus().catch(e => { aiStatus.textContent = e.message || String(e); });
+  aiPrepare.onclick = async () => {
+    aiPrepare.disabled = true;
+    aiPrepare.textContent = 'Preparing…';
+    aiStatus.textContent = 'Starting Chrome’s on-device model…';
+    try {
+      await O.localAI.prepare(percent => {
+        aiStatus.textContent = percent >= 100 ? 'Finishing model setup…' : ('Downloading model: ' + percent + '%');
+      });
+      aiStatus.textContent = 'Local AI is ready. Ask ORACLE an open-ended question in Chat.';
+      aiPrepare.textContent = 'Local AI ready';
+    } catch (error) {
+      aiStatus.textContent = error && error.message ? error.message : String(error);
+      aiPrepare.textContent = 'Try again';
+    } finally {
+      aiPrepare.disabled = false;
+      const current = await O.localAI.status().catch(() => ({ state: 'unsupported' }));
+      if (current.state === 'available') aiPrepare.textContent = 'Load local AI';
+      if (current.state === 'unsupported' || current.state === 'unavailable') aiPrepare.disabled = true;
+    }
+  };
+
   $('#sPart').onchange = e => O.store.saveSettings({ particles: e.target.checked });
   $('#sType').onchange = e => O.store.saveSettings({ typing: e.target.checked });
   $('#sCalm').onchange = e => { O.store.saveSettings({ reduceMotion: e.target.checked }); document.documentElement.classList.toggle('calm', e.target.checked); };
