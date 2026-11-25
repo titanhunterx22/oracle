@@ -183,8 +183,19 @@
     const out = bd.querySelector('.out');
     const show = (t, md) => { current = { title: t, md }; out.innerHTML = O.md(md); };
     const runAct = async (id) => {
-      const userDefs = (await O.store.vault().catch(() => [])).filter(e => e.type === 'definition');
-      show(id, E.textAction(id, selection, { lang: panel.__lang && panel.__lang.value, userDefs }));
+      const buttons = [...panel.querySelectorAll('.acts button')];
+      buttons.forEach(button => { button.disabled = true; });
+      try {
+        const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
+        const result = E.textAction(id, selection, { lang: panel.__lang && panel.__lang.value, userDefs });
+        if (typeof result !== 'string' || !result.trim()) throw new Error('The text tool returned an empty result.');
+        show(id, result);
+      } catch (error) {
+        const message = error && error.message ? error.message : String(error);
+        show('Tool error', '**ORACLE could not run this action.** ' + message);
+      } finally {
+        buttons.forEach(button => { button.disabled = false; });
+      }
     };
     if (markdown) show(title, markdown); else out.innerHTML = '<p style="color:#8b90b3">Choose an action above.</p>';
     panel.querySelector('.x').onclick = closePanel;
