@@ -43,7 +43,7 @@ if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(pat
 
 // Catch duplicate top-level lexical declarations that previously broke Edge.
 function resolveAsset(src) {
-  const clean = decodeURIComponent(String(src).split(/[?#]/, 1)[0]).replace(/^\\/+/, "");
+  const clean = decodeURIComponent(String(src).split(/[?#]/, 1)[0]).replace(/^\/+/, "");
   const file = path.resolve(root, clean);
   if (file !== root && !file.startsWith(root + path.sep)) throw new Error("Invalid script asset path: " + src);
   return file;
@@ -58,10 +58,10 @@ async function requireIsolated(src) {
 }
 for (const htmlFile of files.filter(file => file.endsWith(".html"))) {
   const html = await fs.readFile(htmlFile, "utf8");
-  for (const match of html.matchAll(/<script\\b([^>]*)>/gi)) {
+  for (const match of html.matchAll(/<script\b([^>]*)>/gi)) {
     const attrs = match[1];
-    const src = attrs.match(/\\bsrc="([^"]+)"/i);
-    if (src && !/\\btype="module"/i.test(attrs)) await requireIsolated(src[1]);
+    const src = attrs.match(/\bsrc="([^"]+)"/i);
+    if (src && !/\btype="module"/i.test(attrs)) await requireIsolated(src[1]);
   }
 }
 for (const entry of manifest.content_scripts || []) {
@@ -70,7 +70,7 @@ for (const entry of manifest.content_scripts || []) {
 const combinedClassicCode = [];
 for (const file of classicAssets) combinedClassicCode.push(await fs.readFile(file, "utf8"));
 try {
-  new vm.Script(combinedClassicCode.join("\\n"), { filename: "combined-classic-extension-scripts.js" });
+  new vm.Script(combinedClassicCode.join("\n"), { filename: "combined-classic-extension-scripts.js" });
 } catch (error) {
   throw new Error("Classic extension scripts still conflict or contain invalid JavaScript: " + error.message);
 }
