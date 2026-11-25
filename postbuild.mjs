@@ -36,7 +36,7 @@ async function isolateClassicScript(src) {
   // minifier can lift IIFE locals into top-level let declarations, so otherwise
   // unrelated bundles can collide. Isolate each classic bundle while retaining the
   // shared window/self ORACLE namespace.
-  await fs.writeFile(file, MARKER + "\n(function () {\n" + code + "\n})();\n", "utf8");
+  await fs.writeFile(file, MARKER + "\n(function () {\n" + code + "\n}).call(self);\n", "utf8");
 }
 
 async function walk(dir) {
