@@ -101,17 +101,55 @@
     };
   }
 
+  async function checkModelDownloadAccess(onProgress) {
+    const url = 'https://huggingface.co/mlc-ai/' + MODEL_ID + '/resolve/main/mlc-chat-config.json';
+    if (typeof onProgress === 'function') onProgress(0, 'Checking access to Hugging Face model files');
+    let response;
+    try {
+      // This small public config file is served through the same Hub-to-CDN
+      // redirect path used by the model weights. It gives a useful error before
+      // WebLLM starts downloading hundreds of megabytes of model assets.
+      response = await fetch(url, { method: 'GET', cache: 'no-store', credentials: 'omit' });
+    } catch (error) {
+      const detail = error && error.message ? error.message : String(error);
+      throw new Error(
+        'Edge could not reach the model files on Hugging Face. ORACLE must download model files from Hugging Face and its hf.co storage/CDN hosts. Check your internet connection and whether a VPN, firewall, antivirus, school/work filter or privacy extension is blocking those domains. Technical detail: ' + detail
+      );
+    }
+    if (!response.ok) {
+      throw new Error('Hugging Face model check returned HTTP ' + response.status + '. Check your connection and try again.');
+    }
+    let config;
+    try { config = await response.json(); }
+    catch (_) { throw new Error('Hugging Face responded, but its model configuration could not be read. Please retry the download.'); }
+    if (!config || !config.model_type || !config.quantization) {
+      throw new Error('The model repository returned an unexpected configuration file. Please retry later.');
+    }
+  }
+
   async function createEngine(onProgress) {
     if (engine) return engine;
     if (loading) return loading;
     const runtime = await getRuntime();
 
     loading = (async () => {
-      const created = await runtime.createEngine(MODEL_ID, report => {
-        if (typeof onProgress !== 'function') return;
-        const progress = Math.max(0, Math.min(100, Math.round(Number(report && report.progress || 0) * 100)));
-        onProgress(progress, report && report.text ? String(report.text) : 'Preparing model');
-      });
+      await checkModelDownloadAccess(onProgress);
+      let created;
+      try {
+        created = await runtime.createEngine(MODEL_ID, report => {
+          if (typeof onProgress !== 'function') return;
+          const progress = Math.max(0, Math.min(100, Math.round(Number(report && report.progress || 0) * 100)));
+          onProgress(progress, report && report.text ? String(report.text) : 'Preparing model');
+        });
+      } catch (error) {
+        const detail = error && error.message ? error.message : String(error);
+        if (/failed to fetch|networkerror|load failed/i.test(detail)) {
+          throw new Error(
+            'The browser could reach the model configuration, but a model weight or WebGPU library download failed. ORACLE now allows Hugging Face CDN and EU storage hosts. Check that hf.co and huggingface.co are not blocked by your network, VPN or security software, then try again. Technical detail: ' + detail
+          );
+        }
+        throw error;
+      }
       if (!created || !created.engine || !created.worker) {
         if (created && created.worker) created.worker.terminate();
         throw new Error('WebLLM could not create its local inference engine.');
