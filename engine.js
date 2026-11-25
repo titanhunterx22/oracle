@@ -758,7 +758,13 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
           if (!w && env.getSelection) { const s = (await env.getSelection().catch(() => '')) || ''; if (s && s.split(/\s+/).length <= 3) w = s.trim().toLowerCase(); }
           if (!w) return R('Which word? Select it on the page and say “define selection”, or type **define <word>**.');
           let d = null; try { d = await page(); } catch (e) { /* page optional */ }
-          return R(defineWord(w, d, env.vaultDefs ? await env.vaultDefs() : []));
+          const userDefs = env.vaultDefs ? await env.vaultDefs() : [];
+          const ownDefinition = userDefs.find(entry => String(entry.title || '').toLowerCase().trim() === w.toLowerCase());
+          if (!ownDefinition && env.lookupDefinition) {
+            const expanded = await env.lookupDefinition(w).catch(() => null);
+            if (expanded) return R(expanded);
+          }
+          return R(defineWord(w, d, userDefs));
         }
         case 'explain': {
           if (/\b(selected|selection|highlight)/.test(lc) && env.getSelection) { const s = await env.getSelection(); return R(textAction('explain', s)); }
