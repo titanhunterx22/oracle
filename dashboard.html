@@ -23,7 +23,7 @@
   <main>
     <div class="workspace-head glass">
       <div class="workspace-title-wrap"><span class="eyebrow"><span class="eyebrow-mark"></span> PRIVATE KNOWLEDGE WORKSPACE</span><h2 id="panelTitle">Chat</h2><p id="panelDescription">Ask questions about the page you have open.</p></div>
-      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.0.6</b></span></div>
+      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.1.0</b></span></div>
     </div>
     <div id="welcome" class="glass banner" hidden><b>ORACLE is installed.</b> Everything runs on this device, with no accounts and no API keys. Open any web page, then use the popup (<kbd>Ctrl+Shift+O</kbd>), the command palette (<kbd>Ctrl+Shift+K</kbd>) or this dashboard. <button class="btn sm" id="welcomeX">Got it</button></div>
 
@@ -104,13 +104,13 @@
         </div>
         <div class="settings-card settings-wide" id="localAiCard">
           <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Give ORACLE a language model for open-ended questions and explanations.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
-          <p>Uses Chrome’s built-in Gemini Nano model. Chrome downloads the model once; answers are then generated on your device. No paid API key, AI server, or new extension permission is needed. The first setup requires internet access and a supported computer.</p>
-          <div class="bar wrap"><button class="btn primary" id="aiPrepare" type="button">Download &amp; enable local AI</button><span id="aiStatus" class="mute" role="status" aria-live="polite">Checking Chrome’s local AI support…</span></div>
-          <small class="mute">Requires a recent version of Google Chrome and compatible hardware. If unavailable, ORACLE’s existing tools continue to work.</small>
+          <p>Uses WebLLM runs the Qwen 2.5 0.5B model with WebGPU in a dedicated worker. The model downloads once and is cached by your browser; prompts and answers are processed on this device. An internet connection is needed for the first download. No paid API key or AI server is used.</p>
+          <div class="bar wrap"><button class="btn primary" id="aiPrepare" type="button">Download &amp; enable local AI</button><span id="aiStatus" class="mute" role="status" aria-live="polite">Checking WebGPU support…</span></div>
+          <small class="mute">Requires a current Chromium-based browser with WebGPU and a compatible GPU/driver. Edge and Chrome are supported; no experimental browser flags are required. If unavailable, ORACLE’s existing tools continue to work.</small>
         </div>
         <div class="settings-card settings-wide">
           <div class="settings-card-head"><span class="settings-icon">◈</span><div><h3>Privacy by design</h3><p>What happens to your browsing data.</p></div><span class="privacy-seal"><i></i> LOCAL ONLY</span></div>
-          <p>ORACLE has no ORACLE server, analytics, accounts, or paid AI API keys. Optional Local AI uses Chrome’s built-in on-device model; prompts and supplied page text are processed locally by Chrome, not sent to an AI server. The dictionary can make its separately documented word-only lookup when enabled.</p>
+          <p>ORACLE has no ORACLE server, analytics, accounts, or paid AI API keys. Optional Local AI uses WebLLM and a model hosted for download by MLC/Hugging Face; only model files are downloaded. Prompts, supplied page text and generated answers are processed locally by WebGPU in your browser, not sent to an AI server. The dictionary can make its separately documented word-only lookup when enabled.</p>
         </div>
         <div class="settings-card settings-wide">
           <div class="settings-card-head"><span class="settings-icon">ⓘ</span><div><h3>Permissions &amp; data</h3><p>Why access is needed, and how to clear your information.</p></div></div>
@@ -120,12 +120,12 @@
           <div class="data-actions"><div><b>Your local data</b><small>Clear chat history or remove all saved ORACLE data from this device.</small></div><div class="bar wrap"><button class="btn" id="sClearChat">Clear conversation</button><button class="btn danger" id="sClearAll">Delete all data</button></div></div>
         </div>
         <div class="settings-card settings-wide about-card">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.0.6</b></span></div>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.1.0</b></span></div>
           <p>ORACLE combines deterministic page tools with optional on-device Local AI. The local model can answer open-ended questions and explain concepts; page summaries, facts, dictionary lookups and study tools continue to use ORACLE’s existing local processing.</p>
         </div>
       </div>
     </section>
   </main>
 </div>
-<script src="dictionary.js"></script><script src="engine.js"></script><script src="storage.js"></script><script src="tools.js"></script><script src="orb.js"></script><script src="palette.js"></script><script src="local-ai.js"></script><script src="chat.js"></script><script src="dashboard.js"></script>
+<script src="dictionary.js"></script><script src="engine.js"></script><script src="storage.js"></script><script src="tools.js"></script><script src="orb.js"></script><script src="palette.js"></script><script type="module" src="webllm-client.entry.js"></script><script src="local-ai.js"></script><script src="chat.js"></script><script src="dashboard.js"></script>
 </body></html>
