@@ -284,4 +284,10 @@
   show(PANELS.includes(h0) ? h0 : 'chat');
   addEventListener('hashchange', () => { const h = location.hash.slice(1); if (PANELS.includes(h)) show(h); });
   if (!tabId) { /* no target yet */ }
-})();
+})().catch(error => {
+  const message = error && error.message ? error.message : String(error);
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;z-index:2147483647;left:16px;right:16px;bottom:16px;padding:14px 16px;border:1px solid #ef4444;border-radius:12px;background:#241018;color:#fff;font:14px/1.5 Segoe UI, sans-serif;box-shadow:0 8px 32px #0008';
+  banner.textContent = 'ORACLE startup failed: ' + message + ' — reload the extension at edge://extensions, then reopen the dashboard.';
+  document.body.appendChild(banner);
+});
