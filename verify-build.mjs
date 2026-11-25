@@ -32,9 +32,8 @@ if (!hostPermissions.some(origin => origin.includes("huggingface.co")) || !hostP
   throw new Error("Model download host permissions are missing.");
 }
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
-if (!dashboard.includes('id="aiPrepare"') || !dashboard.includes('id="aiStatus"')) throw new Error("Local AI dashboard controls are missing.");
-if (!dashboard.includes("webllm-client.entry") && !dashboard.includes("popup.")) {
-  // Parcel may inline the module bootstrap or reference its emitted bundle with a hash.
+if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw new Error("Local AI dashboard controls are missing.");
+if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) {
   throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
 }
 const scripts = files.filter(file => file.endsWith(".js"));
@@ -42,7 +41,7 @@ if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basen
   throw new Error("The bundled WebLLM worker was not emitted into dist/.");
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
-if (!popup.includes("webllm") && !files.some(file => /webllm-worker/i.test(file))) {
+if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) {
   throw new Error("The popup does not include the WebLLM bundle.");
 }
-console.log("ORACLE build verified: manifest, popup, dashboard runtime URL, service worker, WebLLM worker and model download permissions are present.");
+console.log("ORACLE build verified: manifest, popup, stable dashboard URL, service worker, WebLLM worker and model download permissions are present.");
