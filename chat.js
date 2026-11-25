@@ -29,9 +29,9 @@
           if (!result || !result.ok || !result.senses || !result.senses.length) return null;
           const senses = result.senses.map((sense, i) => {
             const pos = sense.pos ? ' *(' + sense.pos + ')*' : '';
-            const examples = (sense.examples || []).map(example => '> Example: “' + example + '”').join('\\n');
-            return (i + 1) + '. ' + sense.definition + pos + (examples ? '\\n' + examples : '');
-          }).join('\\n\\n');
+            const examples = (sense.examples || []).map(example => '> Example: “' + example + '”').join('\n');
+            return (i + 1) + '. ' + sense.definition + pos + (examples ? '\n' + examples : '');
+          }).join('\n\n');
           return '**' + word + '**\\n\\n' + senses + '\\n\\n> Source: Open English Wordnet (CC BY 4.0). This definition was saved locally for future offline lookups.';
         },
         async savePage(kind) {
