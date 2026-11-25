@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ORACLE Dashboard</title><link rel="stylesheet" href="common.css"><link rel="stylesheet" href="dashboard.css"></head>
+<body>
+<canvas id="fx"></canvas>
+<div class="app">
+  <aside class="side glass">
+    <div class="brand"><div class="brand-orb" id="sideOrb"></div><div class="brand-copy"><h1>ORACLE</h1><small data-orb-label data-state="idle">Idle</small></div></div>
+    <nav id="nav" aria-label="Workspace navigation">
+      <span class="nav-group-label">Workspace</span>
+      <button data-p="chat" class="on"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.7-3.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg><span>Chat</span><span class="nav-arrow">↗</span></button>
+      <button data-p="analyse"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z"/><path d="M4 17a2.5 2.5 0 0 1 2.5-2.5H20M8 7h8M8 10h5"/></svg><span>Page analysis</span><span class="nav-arrow">↗</span></button>
+      <button data-p="text"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M12 6v13M8 19h8M8 10h8"/><path d="m8.5 6 3.5-3 3.5 3"/></svg><span>Text assistant</span><span class="nav-arrow">↗</span></button>
+      <span class="nav-group-label nav-group-spaced">Your library</span>
+      <button data-p="vault"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M4 8h16M8 12h8M8 15h5"/></svg><span>Knowledge vault</span><span class="nav-arrow">↗</span></button>
+      <span class="nav-group-label nav-group-spaced">Browser</span>
+      <button data-p="tools"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2.5"/><path d="M3 8h18M7 6h.01M10 6h.01M13 6h.01M8 12h8M8 15h5"/></svg><span>Browser tools</span><span class="nav-arrow">↗</span></button>
+      <button data-p="settings"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14 5l2.5-.2 1 2.3 2.2 1.2-.4 2.5 1.2 2.2-1.7 1.8-.2 2.5-2.4.7-1.5 2-2.4-.8-2.4.8-1.5-2-2.4-.7-.2-2.5-1.7-1.8 1.2-2.2-.4-2.5 2.2-1.2 1-2.3L10 5l2-1.5Z"/><circle cx="12" cy="12.5" r="3"/></svg><span>Settings</span><span class="nav-arrow">↗</span></button>
+    </nav>
+    <div class="sidebar-spacer"></div>
+    <div class="target"><label for="tabSel" class="mute">Active reading tab</label><div class="row"><select id="tabSel"></select><button class="btn sm" id="tabRefresh" title="Refresh tab list" aria-label="Refresh tab list">↻</button></div><div class="target-foot"><i></i><span>Reading locally</span></div></div>
+    <div class="sidebar-foot"><span class="shortcut-mark">⌘</span><div><b>Command palette</b><small><kbd>Ctrl</kbd> + <kbd>K</kbd> to jump anywhere</small></div></div>
+  </aside>
+  <main>
+    <div class="workspace-head glass">
+      <div class="workspace-title-wrap"><span class="eyebrow"><span class="eyebrow-mark"></span> PRIVATE KNOWLEDGE WORKSPACE</span><h2 id="panelTitle">Chat</h2><p id="panelDescription">Ask questions about the page you have open.</p></div>
+      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.0.3</b></span></div>
+    </div>
+    <div id="welcome" class="glass banner" hidden><b>ORACLE is installed.</b> Everything runs on this device, with no accounts and no API keys. Open any web page, then use the popup (<kbd>Ctrl+Shift+O</kbd>), the command palette (<kbd>Ctrl+Shift+K</kbd>) or this dashboard. <button class="btn sm" id="welcomeX">Got it</button></div>
+
+    <section id="p-chat" class="panel on glass">
+      <div class="log" id="log" aria-live="polite"></div><div class="chips" id="chips"></div>
+      <form class="composer" id="form"><input type="text" id="input" placeholder="Ask ORACLE about the selected page…" autocomplete="off" aria-label="Message"><button class="btn primary" type="submit">Send</button><button class="btn" type="button" id="clear">Clear</button></form>
+    </section>
+
+    <section id="p-analyse" class="panel glass scroll">
+      <div class="section-kicker"><span class="section-symbol">✳</span><div><b>Analysis studio</b><small>Choose a format and turn the active page into useful knowledge.</small></div><span class="section-count">08 FORMATS</span></div>
+      <div class="bar"><button class="btn primary" id="analyse">Analyse page</button><div class="tabs" id="modes">
+        <button data-m="quick" class="on">Quick summary</button><button data-m="detailed">Detailed</button><button data-m="keypoints">Key points</button><button data-m="simple">Explain simply</button><button data-m="study">Study mode</button><button data-m="facts">Fact extraction</button><button data-m="cards">Flashcards</button><button data-m="quiz">Quiz</button></div></div>
+      <div class="stats" id="stats"></div>
+      <div class="outcard" id="aCard"><div class="scanner" id="scanner"></div><div id="aOut" class="md"><div class="empty-note"><h3>Nothing analysed yet</h3><p>Choose a page in the sidebar and press <b>Analyse page</b>. ORACLE reads the page locally and builds the summary on this device.</p></div></div>
+        <div class="acts"><button class="btn sm" data-copy="#aOut">Copy</button><button class="btn sm" data-save="#aOut" data-title="Analysis">Save to Vault</button></div></div>
+    </section>
+
+    <section id="p-text" class="panel glass scroll">
+      <div class="panel-heading"><div><span class="eyebrow">WORD LOOKUP</span><h2>Offline English dictionary</h2><p class="mute">Look up hundreds of built-in definitions privately, without leaving your browser.</p></div><span class="local-pill"><i></i> ON DEVICE</span></div>
+      <div class="dictionary-box">
+        <div class="dictionary-search"><input id="dictWord" type="search" placeholder="Enter a word, e.g. photosynthesis" autocomplete="off" aria-label="Word to define"><button class="btn primary" id="dictLookup" type="button">Define word</button></div>
+        <div id="dictOut" class="dict-result md" aria-live="polite"><p class="mute">Your definition will appear here. You can also ask “Define [word]” in chat.</p></div>
+        <p class="dictionary-foot">Local glossary · User definitions in your Knowledge Vault take priority · No external requests</p>
+      </div>
+      <div class="panel-heading compact-heading"><div><span class="eyebrow">TEXT TOOLS</span><h2>Text assistant</h2><p class="mute">Highlight text on any page and press the glowing ORACLE button, or paste text here.</p></div></div>
+      <textarea id="tIn" rows="6" placeholder="Paste or type text…"></textarea>
+      <div class="bar wrap"><button class="btn" id="grab">Grab selection from page</button>
+        <button class="btn sm" data-t="explain">Explain</button><button class="btn sm" data-t="simplify">Simplify</button><button class="btn sm" data-t="summarise">Summarise</button><button class="btn sm" data-t="define">Define words</button><button class="btn sm" data-t="keypoints">Key points</button><button class="btn sm" data-t="revision">Revision notes</button><button class="btn sm" data-t="flashcards">Flashcards</button>
+        <span class="row"><select id="tLang" style="width:auto"><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option></select><button class="btn sm" data-t="translate">Translate</button></span></div>
+      <div class="outcard"><div id="tOut" class="md"><p class="mute">Results appear here.</p></div><div class="acts"><button class="btn sm" data-copy="#tOut">Copy</button><button class="btn sm" data-save="#tOut" data-title="Text note">Save to Vault</button></div></div>
+    </section>
+
+    <section id="p-vault" class="panel glass scroll">
+      <div class="section-kicker"><span class="section-symbol">▤</span><div><b>Your knowledge, organised</b><small>Saved notes, definitions and page summaries in one private place.</small></div></div>
+      <h2>Knowledge vault</h2>
+      <div class="bar wrap"><input type="search" id="vQ" placeholder="Search saved knowledge…" aria-label="Search vault" style="flex:1;min-width:180px"><select id="vCol" style="width:auto"></select><select id="vType" style="width:auto"><option value="all">All types</option><option>note</option><option>definition</option><option>summary</option><option>selection</option></select><button class="btn sm" id="vExport">Export JSON</button></div>
+      <details class="add" open><summary>Add an entry</summary>
+        <div class="grid2"><input type="text" id="vTitle" placeholder="Title or word"><div class="row"><select id="vNewType"><option>note</option><option>definition</option></select><select id="vNewCol"></select></div></div>
+        <textarea id="vText" rows="3" placeholder="Your note, or the definition…"></textarea><button class="btn primary" id="vAdd">Add to vault</button></details>
+      <div class="bar wrap"><span class="mute">Collections:</span><span id="vChips" class="row wrap"></span><input type="text" id="vNewC" placeholder="New collection" style="width:150px"><button class="btn sm" id="vAddC">Add</button></div>
+      <div id="vList" class="list"></div>
+    </section>
+
+    <section id="p-tools" class="panel scroll tools">
+      <div class="section-kicker tools-kicker"><span class="section-symbol">⌘</span><div><b>Browser toolkit</b><small>Organise, search and work with the pages you have open.</small></div></div>
+      <div class="card glass"><h3><span class="card-heading-icon">▦</span>Tab manager</h3>
+        <div class="bar wrap"><input type="search" id="tbQ" placeholder="Search open tabs…" style="flex:1" aria-label="Search tabs"><button class="btn sm" id="tbRef">Refresh</button><button class="btn sm" id="tbDup">Select duplicates</button><button class="btn sm danger" id="tbClose">Close selected</button></div>
+        <div id="tbList" class="list tabs-list"></div></div>
+      <div class="card glass"><h3><span class="card-heading-icon">☆</span>Bookmark assistant</h3>
+        <div class="bar wrap"><select id="bmCat" style="width:auto"></select><input type="text" id="bmNew" placeholder="New category" style="width:140px"><button class="btn sm" id="bmAddCat">Add</button><button class="btn primary sm" id="bmSave">Save current page</button></div>
+        <input type="search" id="bmQ" placeholder="Search saved pages…" aria-label="Search bookmarks"><div id="bmList" class="list"></div></div>
+      <div class="card glass"><h3><span class="card-heading-icon">◉</span>Reading assistant</h3>
+        <div class="bar wrap"><button class="btn" id="rdOn">Reading mode on</button><button class="btn" id="rdOff">Off</button><label class="row">Text size <input type="range" id="rdSize" min="14" max="30" step="1"><b id="rdVal"></b></label></div>
+        <div class="bar wrap"><button class="btn" id="hlOn">Highlight important passages</button><button class="btn" id="hlOff">Clear highlights</button><span id="rdMsg" class="mute"></span></div></div>
+      <div class="card glass"><h3><span class="card-heading-icon">⌕</span>Page tools</h3>
+        <div class="bar wrap"><button class="btn sm" data-pt="links">Extract links</button><button class="btn sm" data-pt="keywords">Find keywords</button><button class="btn sm" data-pt="stats">Word count &amp; reading time</button><button class="btn sm" data-pt="headings">Headings</button><button class="btn sm" data-pt="overview">Website overview</button></div>
+        <div class="bar wrap"><input type="search" id="fQ" placeholder="Smart search on the page…" style="flex:1" aria-label="Search the page"><button class="btn sm" id="fGo">Find</button><button class="btn sm" id="fPrev">◀</button><button class="btn sm" id="fNext">▶</button><button class="btn sm" id="fClr">Clear</button><span id="fCnt" class="mute"></span></div>
+        <div class="outcard"><div id="ptOut" class="md"><p class="mute">Tool results appear here.</p></div><div class="acts"><button class="btn sm" data-copy="#ptOut">Copy</button></div></div></div>
+      <div class="card glass"><h3><span class="card-heading-icon">⇄</span>Compare pages</h3>
+        <div class="bar wrap"><select id="cmpA" style="flex:1"></select><span class="mute">vs</span><select id="cmpB" style="flex:1"></select><button class="btn primary sm" id="cmpGo">Compare</button></div>
+        <div class="outcard"><div id="cmpOut" class="md"><p class="mute">Pick two open tabs.</p></div><div class="acts"><button class="btn sm" data-copy="#cmpOut">Copy</button><button class="btn sm" data-save="#cmpOut" data-title="Page comparison">Save to Vault</button></div></div></div>
+    </section>
+
+    <section id="p-settings" class="panel glass scroll settings-panel">
+      <div class="section-kicker"><span class="section-symbol">⚙</span><div><b>Make ORACLE yours</b><small>Personalise the experience and keep control of your data.</small></div></div>
+      <div class="settings-grid">
+        <div class="settings-card">
+          <div class="settings-card-head"><span class="settings-icon">◌</span><div><h3>Appearance &amp; behaviour</h3><p>Choose how ORACLE looks and responds.</p></div></div>
+          <label class="tog"><span class="toggle-copy"><b>Ambient particles</b><small>Subtle background motion on supported pages.</small></span><input type="checkbox" id="sPart"></label>
+          <label class="tog"><span class="toggle-copy"><b>Typing animation</b><small>Reveal assistant responses with a type-on effect.</small></span><input type="checkbox" id="sType"></label>
+          <label class="tog"><span class="toggle-copy"><b>Reduce motion</b><small>Stop animated effects and moving elements.</small></span><input type="checkbox" id="sCalm"></label>
+        </div>
+        <div class="settings-card">
+          <div class="settings-card-head"><span class="settings-icon">⌨</span><div><h3>Keyboard shortcuts</h3><p>Open ORACLE quickly from any page.</p></div></div>
+          <div class="shortcut-row"><span>Open command palette</span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd></div>
+          <div class="shortcut-row"><span>Open ORACLE popup</span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>O</kbd></div>
+          <div class="bar wrap"><button class="btn" id="sShort">Manage shortcuts</button><span id="sShortMsg" class="mute"></span></div>
+        </div>
+        <div class="settings-card settings-wide">
+          <div class="settings-card-head"><span class="settings-icon">◈</span><div><h3>Privacy by design</h3><p>What happens to your browsing data.</p></div><span class="privacy-seal"><i></i> LOCAL ONLY</span></div>
+          <p>ORACLE has no server, no analytics, no accounts and no API keys. The extension declares no network access: its pages can’t make outside requests (enforced by its Content Security Policy). Page text is processed in your browser and only what you choose to save is stored, in <code>chrome.storage.local</code> on this device.</p>
+        </div>
+        <div class="settings-card settings-wide">
+          <div class="settings-card-head"><span class="settings-icon">ⓘ</span><div><h3>Permissions &amp; data</h3><p>Why access is needed, and how to clear your information.</p></div></div>
+          <details class="permission-details"><summary>View permission explanations</summary>
+            <ul class="plain"><li><b>storage</b> — saves your chat, vault, bookmarks and settings locally.</li><li><b>tabs</b> — lists, searches, switches and closes tabs, and finds duplicates. ORACLE reads tab titles and addresses only for this.</li><li><b>activeTab + scripting</b> — lets ORACLE read a tab you had open before installing it, when you click the toolbar icon.</li><li><b>Access to http/https pages (content script)</b> — needed to read page text for analysis, show the selection button and highlight matches. Nothing is sent anywhere.</li></ul>
+          </details>
+          <div class="data-actions"><div><b>Your local data</b><small>Clear chat history or remove all saved ORACLE data from this device.</small></div><div class="bar wrap"><button class="btn" id="sClearChat">Clear conversation</button><button class="btn danger" id="sClearAll">Delete all data</button></div></div>
+        </div>
+        <div class="settings-card settings-wide about-card">
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.0.3</b></span></div>
+          <p>ORACLE is a rule-based toolkit. It scores sentences, counts words, matches patterns and includes a bundled offline English glossary with hundreds of definitions. It is not an AI language model, so summaries are extracted sentences, simplification is word-swapping, and translation is a small word-by-word glossary.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="dictionary.js"></script><script src="engine.js"></script><script src="storage.js"></script><script src="tools.js"></script><script src="orb.js"></script><script src="palette.js"></script><script src="chat.js"></script><script src="dashboard.js"></script>
+</body></html>

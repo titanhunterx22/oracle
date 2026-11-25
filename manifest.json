@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "ORACLE",
+  "version": "1.0.3",
+  "description": "A private, fully local browser companion: page analysis, study tools, tab manager and knowledge vault. No API keys, no servers.",
+  "minimum_chrome_version": "111",
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "action": {
+    "default_title": "ORACLE",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "scripting",
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "dictionary.js",
+        "engine.js",
+        "storage.js",
+        "palette.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "open-palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open the ORACLE command palette on this page"
+    },
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+O",
+        "mac": "Command+Shift+O"
+      },
+      "description": "Open the ORACLE popup"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'none'"
+  }
+}
