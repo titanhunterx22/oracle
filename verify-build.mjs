@@ -33,6 +33,12 @@ const hostPermissions = manifest.host_permissions || [];
 if (!hostPermissions.some(origin => origin.includes("huggingface.co")) || !hostPermissions.some(origin => origin.includes("raw.githubusercontent.com"))) {
   throw new Error("Model download host permissions are missing.");
 }
+for (const requiredHost of ["https://hf.co", "https://*.hf.co", "https://cdn-lfs-eu-1.hf.co"]) {
+  if (!csp.includes(requiredHost)) throw new Error("Extension CSP is missing Hugging Face CDN access: " + requiredHost);
+}
+for (const requiredHost of ["https://hf.co/*", "https://*.hf.co/*", "https://cdn-lfs-eu-1.hf.co/*"]) {
+  if (!hostPermissions.includes(requiredHost)) throw new Error("Extension host permissions are missing Hugging Face CDN access: " + requiredHost);
+}
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
 if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw new Error("Local AI dashboard controls are missing.");
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");

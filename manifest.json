@@ -60,13 +60,21 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co https://hf.co https://*.hf.co https://cas-server.xethub-eu.hf.co https://transfer.xethub-eu.hf.co https://us.aws.cdn.hf.co https://us.gcp.cdn.hf.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co"
   },
   "host_permissions": [
     "https://en-word.net/*",
     "https://huggingface.co/*",
     "https://*.huggingface.co/*",
     "https://raw.githubusercontent.com/*",
-    "https://*.xethub.hf.co/*"
+    "https://*.xethub.hf.co/*",
+    "https://hf.co/*",
+    "https://*.hf.co/*",
+    "https://cas-server.xethub-eu.hf.co/*",
+    "https://transfer.xethub-eu.hf.co/*",
+    "https://us.aws.cdn.hf.co/*",
+    "https://us.gcp.cdn.hf.co/*",
+    "https://cdn-lfs-us-1.hf.co/*",
+    "https://cdn-lfs-eu-1.hf.co/*"
   ]
 }
