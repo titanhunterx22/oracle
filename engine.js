@@ -718,7 +718,7 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
     afterNotes: ['Create flashcards', 'Quiz me on this page', 'Save this page', 'Find the important dates'],
     afterFacts: ['Summarise this page', 'Create flashcards', 'Show page overview']
   };
-  const HELP = `## What ORACLE can do\nORACLE works entirely on your device with rule-based text processing. It is not an AI language model, so it extracts and rearranges what is already on the page rather than reasoning about it.\n\n**Try saying**\n- “Summarise this page” / “Give me a detailed summary”\n- “What are the main points?”\n- “Explain that more simply”\n- “Turn this into revision notes”\n- “Find the important dates”\n- “Create flashcards” / “Quiz me”\n- “Define <word>”, “Find <text> on this page”\n- “Show page overview”, “How long to read this?”, “List the links”\n- “Show my tabs”, “Save this page”, “Search my vault for <topic>”\n\nYou can also ask a question about the page and ORACLE will pull out the most relevant passages.`;
+  const HELP = `## What ORACLE can do\nORACLE’s page tools use local rules, and optional Local AI can answer open-ended questions and explain topics using Chrome’s on-device model. It does not need a paid API key or AI server.\n\n**Try saying**\n- “Summarise this page” / “Give me a detailed summary”\n- “What are the main points?”\n- “Explain that more simply”\n- “Turn this into revision notes”\n- “Find the important dates”\n- “Create flashcards” / “Quiz me”\n- “Define <word>”, “Find <text> on this page”\n- “Show page overview”, “How long to read this?”, “List the links”\n- “Show my tabs”, “Save this page”, “Search my vault for <topic>”\n\nYou can also ask a question about the page and ORACLE will pull out the most relevant passages.`;
 
   async function handle(msg, env, ctx) {
     ctx = ctx || {}; env = env || {};
@@ -769,12 +769,36 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
           return R(localDefinition);
         }
         case 'explain': {
-          if (/\b(selected|selection|highlight)/.test(lc) && env.getSelection) { const s = await env.getSelection(); return R(textAction('explain', s)); }
-          if (/\b(page|article|site|post)\b/.test(lc)) return R(modes.simple(await page()), { suggestions: SUG.afterSummary });
-          if (ctx.last && /\b(that|this|it)\b/.test(lc)) { const plain = ctx.last.replace(/^[#>\-\s*]+/gm, '').replace(/\*\*/g, ''); return R(textAction('explain', plain)); }
+          if (/\b(selected|selection|highlight)/.test(lc) && env.getSelection) {
+            const selected = await env.getSelection();
+            if (env.askAI) {
+              try { return R(await env.askAI(m, null, selected)); } catch (error) {
+                if (!/first-time setup|not supported|unavailable/i.test(error.message || '')) throw error;
+              }
+            }
+            return R(textAction('explain', selected));
+          }
+          if (/\b(page|article|site|post)\b/.test(lc)) {
+            const d = await page();
+            if (env.askAI) {
+              try { return R(await env.askAI(m, d)); } catch (error) {
+                if (!/first-time setup|not supported|unavailable/i.test(error.message || '')) throw error;
+              }
+            }
+            return R(modes.simple(d), { suggestions: SUG.afterSummary });
+          }
+          if (ctx.last && /\b(that|this|it)\b/.test(lc)) {
+            const plain = ctx.last.replace(/^[#>\-\s*]+/gm, '').replace(/\*\*/g, '');
+            return R(textAction('explain', plain));
+          }
+          if (env.askAI) {
+            try { return R(await env.askAI(m)); } catch (error) {
+              if (!/first-time setup|not supported|unavailable/i.test(error.message || '')) throw error;
+            }
+          }
           const rest = m.replace(/^explain\s+/i, '');
           if (words(rest).length <= 3) return R(defineWord(rest, await page().catch(() => null), env.vaultDefs ? await env.vaultDefs() : []));
-          const a = answer(rest, await page()); if (a) return R(a);
+          const ans = answer(rest, await page()); if (ans) return R(ans);
           break;
         }
         case 'find': {
@@ -803,13 +827,20 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
           return R(res.length ? `## Vault results (${res.length})\n${bullets(res.slice(0, 8).map(e => `**${clip(e.title, 70)}** (${e.type}) — ${clip((e.text || '').replace(/\s+/g, ' '), 120)}`))}` : 'Nothing in your vault matches that yet.');
         }
       }
-      // fallback: retrieval-style question about the page
+      // Open-ended questions use the optional on-device model. Page text is only
+      // included when the user clearly asks about the current page or article.
       const isQ = /\?$|^(what|who|when|where|why|how|does|do|is|are|can|which|tell me)\b/.test(lc);
-      if (isQ || words(m).length >= 3) {
-        let d = null; try { d = await page(); } catch (e) { /* none */ }
-        if (d) { const a = answer(m, d); if (a) return R(a); return R('I couldn’t find anything about that on this page. ORACLE only matches keywords in the page text, so try different words, or say **help** to see what I can do.'); }
+      if ((it.id === 'none' || isQ) && env.askAI && words(m).length >= 2) {
+        const asksAboutPage = /\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b|\baccording to (this|the) (page|article)\b/i.test(m);
+        let doc = null;
+        if (asksAboutPage) { try { doc = await page(); } catch (e) { /* page may not be readable */ } }
+        return R(await env.askAI(m, doc));
       }
-      return R('I’m not able to process that. ORACLE understands a fixed set of commands rather than free conversation. Say **help** to see them, or try one of these.', { state: 'error' });
+      if (isQ || words(m).length >= 3) {
+        let doc = null; try { doc = await page(); } catch (e) { /* none */ }
+        if (doc) { const found = answer(m, doc); if (found) return R(found); return R('I couldn’t find anything about that on this page. ORACLE only matches keywords in the page text, so try different words, or say **help** to see what I can do.'); }
+      }
+      return R('I’m not able to process that. Enable Chrome’s on-device Local AI in Dashboard → Settings for open-ended questions, or say **help** to see the available tools.', { state: 'error' });
     } catch (e) {
       return { text: '**I couldn’t do that.** ' + (e && e.message ? e.message : String(e)), suggestions: ['Help'], state: 'error', intent: it.id };
     }
