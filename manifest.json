@@ -5,17 +5,17 @@
   "description": "A private, fully local browser companion: page analysis, study tools, tab manager and knowledge vault. No API keys, no servers.",
   "minimum_chrome_version": "111",
   "icons": {
-    "16": "assets/icon16.png",
-    "32": "assets/icon32.png",
-    "48": "assets/icon48.png",
-    "128": "assets/icon128.png"
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   },
   "action": {
     "default_title": "ORACLE",
     "default_popup": "popup.html",
     "default_icon": {
-      "16": "assets/icon16.png",
-      "32": "assets/icon32.png"
+      "16": "icon16.png",
+      "32": "icon32.png"
     }
   },
   "background": {
