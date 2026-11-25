@@ -25,7 +25,9 @@
         vaultSearch: q => O.store.searchVault(q),
         async askAI(question, doc, selection) {
           if (!O.localAI) throw new Error('Local AI is not loaded. Reload the ORACLE extension and try again.');
-          return O.localAI.ask(question, { page: doc || null, selection: selection || '', history: await O.store.conversation() });
+          const history = await O.store.conversation();
+          if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].text === question) history.pop();
+          return O.localAI.ask(question, { page: doc || null, selection: selection || '', history });
         },
         vaultDefs: async () => (await O.store.vault()).filter(e => e.type === 'definition'),
         async lookupDefinition(word) {
@@ -90,7 +92,24 @@
         O.orb.set(pageish ? 'analysing' : 'processing');
         const t0 = Date.now();
         let res;
-        try { res = await O.engine.handle(text, env, ctx); } catch (e) { res = { text: '**Something went wrong.** ' + e.message, state: 'error', suggestions: ['Help'] }; }
+        try {
+          const intent = O.engine.detect(text.toLowerCase()).id;
+          const useLocalAI = intent === 'none' || intent === 'explain';
+          if (useLocalAI && O.localAI) {
+            let doc = null, selection = '';
+            if (/\\b(selected|selection|highlight)\\b/i.test(text)) {
+              selection = await env.getSelection().catch(() => '');
+            } else if (/\\b(this|current|that|the)\\s+(page|article|website|site|post|text|passage|document)\\b|\\b(on|in|from)\\s+(this|the)\\s+(page|article|website|site|post)\\b/i.test(text)) {
+              doc = await env.getPage().catch(() => null);
+            }
+            const answer = await env.askAI(text, doc, selection);
+            res = { text: answer, state: 'responding', intent: 'local-ai', suggestions: O.engine.SUG.default };
+          } else {
+            res = await O.engine.handle(text, env, ctx);
+          }
+        } catch (e) {
+          res = { text: '**Local AI / assistant error.** ' + (e && e.message ? e.message : String(e)), state: 'error', suggestions: ['Help'] };
+        }
         await sleep(Math.max(0, 450 - (Date.now() - t0)));
         pending.remove();
         if (res.clear) { await O.store.clearConversation(); log.innerHTML = ''; ctx.last = ''; emptyState(); setChips(); O.orb.set('idle'); busy = false; return; }
