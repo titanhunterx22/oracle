@@ -60,7 +60,7 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self' blob:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co"
   },
   "host_permissions": [
     "https://en-word.net/*",
