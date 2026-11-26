@@ -216,6 +216,24 @@ def build(source_zip: Path, output_dir: Path) -> dict:
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+
+    # Parcel removes resource globs for files that do not exist until this
+    # build step. Re-add the generated dictionary assets to the emitted MV3
+    # manifest so HTTP/HTTPS content scripts can fetch their local shards.
+    manifest_path = output_dir.parent / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    web_resources = manifest.setdefault("web_accessible_resources", [])
+    resource_patterns = ["dictionary-data/*.json.gz", "dictionary-data/metadata.json"]
+    matches = ["http://*/*", "https://*/*"]
+    target = next((entry for entry in web_resources if entry.get("matches") == matches), None)
+    if target is None:
+        target = {"resources": [], "matches": matches}
+        web_resources.append(target)
+    target["resources"] = sorted(set(target.get("resources", [])) | set(resource_patterns))
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return metadata
 
 
