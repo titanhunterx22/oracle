@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.1.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.2.0") throw new Error("Unexpected extension version: " + manifest.version);
 const popupPath = manifest.action && manifest.action.default_popup;
 if (!popupPath || !exists(popupPath)) throw new Error("Manifest popup entry is missing from the build: " + popupPath);
 if (!exists("dashboard.html")) throw new Error("Build output is missing the stable dashboard.html runtime URL.");
@@ -41,23 +41,34 @@ for (const requiredHost of ["https://hf.co/*", "https://*.hf.co/*", "https://cdn
 }
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
 if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw new Error("Local AI dashboard controls are missing.");
+if (!dashboard.includes("Qwen 2.5 1.5B") || !dashboard.includes("ai-specs")) {
+  throw new Error("The Qwen model description/specifications are missing from the dashboard.");
+}
+const styleFiles = files.filter(file => file.endsWith(".css"));
+const styleCode = (await Promise.all(styleFiles.map(file => fs.readFile(file, "utf8")))).join("\\n");
+if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) {
+  throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
+}
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
 const scripts = files.filter(file => file.endsWith(".js"));
 if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The bundled WebLLM worker was not emitted into dist/.");
 const scriptBundles = await Promise.all(scripts.map(file => fs.readFile(file, "utf8")));
 const allScriptCode = scriptBundles.join("\n");
-if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("1024")) {
-  throw new Error("The 1K low-memory WebLLM context-window override is missing from the build.");
+if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("2048")) {
+  throw new Error("The 2K Qwen WebLLM context-window override is missing from the build.");
 }
-if (!allScriptCode.includes("SmolLM2-360M-Instruct-q4f32_1-MLC")) {
-  throw new Error("The SmolLM2 360M low-memory model is missing from the build.");
+if (!allScriptCode.includes("Qwen2.5-1.5B-Instruct-q4f32_1-MLC")) {
+  throw new Error("The Qwen 2.5 1.5B model is missing from the build.");
 }
-if (!/max_tokens\s*:\s*160/.test(allScriptCode)) {
-  throw new Error("The low-memory generation limit is missing from the build.");
+if (!/max_tokens\s*:\s*384/.test(allScriptCode)) {
+  throw new Error("The Qwen generation-token budget is missing from the build.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
   throw new Error("WebGPU device-loss detection and recovery are missing from the build.");
+}
+if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
+  throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
 if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The popup does not include the WebLLM bundle.");

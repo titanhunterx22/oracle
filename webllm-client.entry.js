@@ -1,9 +1,9 @@
 import { CreateWebWorkerMLCEngine } from "@mlc-ai/web-llm";
 
-// The 1K KV cache and q4f32 model target systems with limited or unstable integrated GPU memory.
+// Qwen 2.5 1.5B q4f32 is a low-VRAM model; a 2K context balances useful prompts with shared-memory headroom.
 // ChatOptions is the fourth argument to CreateWebWorkerMLCEngine (not engineConfig).
 const LOW_MEMORY_CHAT_OPTIONS = {
-  context_window_size: 1024,
+  context_window_size: 2048,
 };
 
 // WebLLM's official worker-backed engine keeps inference off the extension UI thread.
