@@ -33,7 +33,7 @@ for (const letter of "abcdefghijklmnopqrstuvwxyz") {
   if (!exists("dictionary-data/" + letter + ".json.gz")) throw new Error("Missing offline dictionary shard: " + letter);
 }
 if (!exists("dictionary-data/other.json.gz")) throw new Error("Missing non-Latin offline dictionary shard.");
-const fullDictionaryScript = files.find(file => path.basename(file) === "dictionary-full.js");
+const fullDictionaryScript = scripts.find(file => /^dictionary-full(?:\\.[a-f0-9]+)?\\.js$/i.test(path.basename(file)));
 if (!fullDictionaryScript) throw new Error("The lazy offline dictionary loader was not bundled.");
 
 const popupPath = manifest.action && manifest.action.default_popup;
@@ -50,7 +50,9 @@ if (!dictionaryResources.includes("dictionary-data/*.json.gz") || !dictionaryRes
   throw new Error("Expanded offline dictionary assets are not exposed to content scripts.");
 }
 const contentScripts = (manifest.content_scripts || []).flatMap(item => item.js || []);
-if (!contentScripts.includes("dictionary-full.js") || contentScripts.indexOf("dictionary-full.js") > contentScripts.indexOf("engine.js")) {
+const fullDictionaryIndex = contentScripts.findIndex(src => /dictionary-full(?:\\.[a-f0-9]+)?\\.js$/i.test(path.basename(src)));
+const engineIndex = contentScripts.findIndex(src => /engine(?:\\.[a-f0-9]+)?\\.js$/i.test(path.basename(src)));
+if (fullDictionaryIndex < 0 || engineIndex < 0 || fullDictionaryIndex > engineIndex) {
   throw new Error("The offline dictionary loader must run before the engine in content scripts.");
 }
 const hostPermissions = manifest.host_permissions || [];
@@ -64,7 +66,7 @@ for (const requiredHost of ["https://hf.co/*", "https://*.hf.co/*", "https://cdn
   if (!hostPermissions.includes(requiredHost)) throw new Error("Extension host permissions are missing Hugging Face CDN access: " + requiredHost);
 }
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
-if (!dashboard.includes("dictionary-full.js") || !dashboard.includes("160,000 English word forms")) {
+if (!dashboard.includes("dictionary-full.js") || !dashboard.includes("150,000 English word forms")) {
   throw new Error("The expanded offline dictionary is not wired into the dashboard.");
 }
 if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw new Error("Local AI dashboard controls are missing.");
