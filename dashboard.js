@@ -121,13 +121,29 @@
     if (!word) { setOut($('#dictOut'), 'Enter a word to look up.'); $('#dictWord').focus(); return; }
     try {
       const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
-      setOut($('#dictOut'), E.defineWord(word, null, userDefs));
+      const curated = E.defineWord(word, null, userDefs);
+      if (!curated.includes('isn’t in ORACLE’s bundled definition set yet.')) {
+        setOut($('#dictOut'), curated);
+        return;
+      }
+      setOut($('#dictOut'), '**Looking through the expanded offline dictionary…**');
+      const full = O.dictionaryFull ? await O.dictionaryFull.lookup(word).catch(error => {
+        throw new Error('The expanded offline dictionary could not be opened: ' + error.message);
+      }) : null;
+      setOut($('#dictOut'), full
+        ? O.dictionaryFull.format(full)
+        : curated);
     } catch (e) { fail($('#dictOut'), e); }
   };
   $('#dictLookup').onclick = dictLookup;
   $('#dictWord').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dictLookup(); } });
   const dictCount = $('.dictionary-foot');
-  if (dictCount) dictCount.textContent = `${E.dictionarySize.toLocaleString()} offline definitions · Your Vault definitions take priority · No external requests`;
+  if (dictCount) {
+    dictCount.textContent = 'Curated local glossary · Expanded offline WordNet index loads only the letter you look up · Your Vault definitions take priority';
+    if (O.dictionaryFull) O.dictionaryFull.metadata().then(meta => {
+      dictCount.textContent = `${meta.word_count.toLocaleString()} WordNet word forms + curated glossary · Multiple senses and examples · Loaded locally, on demand`;
+    }).catch(() => {});
+  }
 
   /* ───── knowledge vault ───── */
   async function fillCollections() {
