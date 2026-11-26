@@ -28,7 +28,7 @@ SOURCE_SHA256 = "8832b8fa26a14c0ba8c99bb1ef8db6f9e122a6d9193b65ca9e0ef572580fee7
 SOURCE_RELEASE = "Open English WordNet 2025+"
 ATTRIBUTION_URL = "https://github.com/globalwordnet/english-wordnet"
 LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/"
-EXPECTED_MIN_WORDS = 120_000
+EXPECTED_MIN_WORDS = 150_000
 
 
 def normalise_word(value: str) -> str:
