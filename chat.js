@@ -27,7 +27,14 @@
           if (!O.localAI) throw new Error('Local AI is not loaded. Reload the ORACLE extension and try again.');
           const history = await O.store.conversation();
           if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].text === question) history.pop();
-          return O.localAI.ask(question, { page: doc || null, selection: selection || '', history });
+          // Retrieve only a couple of relevant saved notes. Everything is read from local extension storage.
+          const knowledge = await O.store.searchVault(question).catch(() => []);
+          return O.localAI.ask(question, {
+            page: doc || null,
+            selection: selection || '',
+            history,
+            knowledge: Array.isArray(knowledge) ? knowledge.slice(0, 2) : []
+          });
         },
         vaultDefs: async () => (await O.store.vault()).filter(e => e.type === 'definition'),
         async lookupDefinition(word) {
