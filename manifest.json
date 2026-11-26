@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ORACLE",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A private Chromium browser companion with local page tools and optional WebGPU-powered AI. No paid API keys or AI servers.",
   "minimum_chrome_version": "113",
   "icons": {
