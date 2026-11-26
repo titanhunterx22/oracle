@@ -47,7 +47,7 @@ for (const token of ["wasm-unsafe-eval", "huggingface.co", "raw.githubuserconten
 }
 const dictionaryResources = (manifest.web_accessible_resources || []).flatMap(item => item.resources || []);
 if (!dictionaryResources.includes("dictionary-data/*.json.gz") || !dictionaryResources.includes("dictionary-data/metadata.json")) {
-  throw new Error("Expanded offline dictionary assets are not exposed to content scripts.");
+  throw new Error("Expanded offline dictionary assets are not exposed to content scripts. Emitted resources: " + JSON.stringify(manifest.web_accessible_resources || []));
 }
 const contentScripts = (manifest.content_scripts || []).flatMap(item => item.js || []);
 const fullDictionaryIndex = contentScripts.findIndex(src => path.basename(src).startsWith("dictionary-full") && src.endsWith(".js"));
