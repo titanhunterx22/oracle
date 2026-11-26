@@ -24,6 +24,12 @@ npm run build:check
 
 Then load the generated `dist` folder through `edge://extensions` or `chrome://extensions` → **Load unpacked**. The build uses Parcel's WebExtension configuration to bundle the WebLLM runtime and dedicated worker inside the extension, as required by Manifest V3's extension-page security policy.
 
+## Expanded offline dictionary
+
+The extension build downloads the official Open English WordNet 2025+ JSON release, verifies its published SHA-256 checksum, and generates compressed alphabet shards under `dist/dictionary-data/`. A network connection is needed when building the extension; dictionary lookups are then fully offline. The source archive is not included in the installed extension.
+
+The expanded data is based on [Open English WordNet 2025+](https://github.com/globalwordnet/english-wordnet), released under CC BY 4.0 with attribution to both the Open English WordNet team and Princeton WordNet. See [DICTIONARY_ATTRIBUTION.md](DICTIONARY_ATTRIBUTION.md).
+
 ## Using ORACLE
 
 | Feature | How |
@@ -63,13 +69,13 @@ The extension CSP allows only packaged scripts/WebAssembly and the specific mode
 
 - WebGPU availability depends on browser version, operating system, GPU, drivers and available graphics memory. A WebGPU adapter check does not guarantee every model will initialise successfully.
 - Qwen 2.5 1.5B is still a small local model and is less capable than large cloud models. It can hallucinate and has no live web access.
-- The bundled offline English glossary contains 784 entries. Optional Open English Wordnet lookups can fill some gaps; only the requested word is sent, and results are cached locally.
+- The expanded offline dictionary packages Open English WordNet 2025+ (161,875 lexical forms across 120,564 synsets in the upstream release; ORACLE's compact build contains 152,459 defined word forms and 212,608 senses) alongside ORACLE's curated learner-friendly glossary. Alphabetic shards are compressed and loaded from the extension only when a word is looked up. It provides multiple WordNet senses, examples and related words, but it is a lexical database rather than a complete general-purpose learner's dictionary; specialist, inflected and newly coined terms may still be missing.
 - Spanish/French/German translation uses a small word-by-word glossary and does not preserve grammar.
 - Fact extraction lists information as written on a page; it does not independently verify claims.
 - Browser-internal pages, extension stores and some built-in PDF viewer pages cannot be read by extensions.
 
 ## Project files
 
-`local-ai.js` — Local AI adapter and UI-facing API; `webllm-client.entry.js` and `webllm-worker.entry.js` — WebLLM client/worker build entries; `engine.js` — deterministic NLP and intent router; `chat.js` — shared popup/dashboard chat; `content.js` — page extraction and selection tools; `dictionary.js` — offline English glossary; `storage.js` — local persistence; `tools.js` — tabs and page messaging; `dashboard.*` and `popup.*` — user interface.
+`local-ai.js` — Local AI adapter and UI-facing API; `webllm-client.entry.js` and `webllm-worker.entry.js` — WebLLM client/worker build entries; `engine.js` — deterministic NLP and intent router; `chat.js` — shared popup/dashboard chat; `content.js` — page extraction and selection tools; `dictionary.js` — curated offline English glossary; `dictionary-full.js` — lazy WordNet shard loader; `scripts/build_offline_dictionary.py` — verified dataset-to-shard builder; `storage.js` — local persistence; `tools.js` — tabs and page messaging; `dashboard.*` and `popup.*` — user interface.
 
 For detailed Edge-specific install and troubleshooting steps, see [EDGE_SETUP.md](EDGE_SETUP.md). See [CHANGELOG.md](CHANGELOG.md) for release history.

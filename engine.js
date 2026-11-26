@@ -762,6 +762,10 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
           const localDefinition = defineWord(w, d, userDefs);
           const isKnownLocally = !localDefinition.includes('isn’t in ORACLE’s bundled definition set yet.');
           if (isKnownLocally) return R(localDefinition);
+          if (O.dictionaryFull) {
+            const offline = await O.dictionaryFull.lookup(w).catch(() => null);
+            if (offline) return R(O.dictionaryFull.format(offline));
+          }
           if (env.lookupDefinition) {
             const expanded = await env.lookupDefinition(w).catch(() => null);
             if (expanded) return R(expanded);

@@ -1,3 +1,9 @@
+# ORACLE 1.3.0
+
+- Expanded the offline English dictionary with Open English WordNet 2025+ (over 150,000 lexical forms and multiple senses per word).
+- Added verified build-time dataset download and compact gzip alphabet shards, loaded on demand so ordinary pages do not parse the full dictionary.
+- Added attribution and Princeton WordNet licence notices, and updated dictionary search and chat fallbacks.
+
 # ORACLE 1.2.0
 
 - Upgraded Local AI to Qwen 2.5 1.5B Instruct q4f32 with a 2K context and a longer response budget.

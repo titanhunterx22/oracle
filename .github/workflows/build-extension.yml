@@ -24,8 +24,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Build and verify extension
         run: |
-          npm run build
-          npm run verify
+          npm run build:check
           test -f dist/manifest.json
       - name: Upload installable extension
         uses: actions/upload-artifact@v4

@@ -19,7 +19,23 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.2.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.3.0") throw new Error("Unexpected extension version: " + manifest.version);
+const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
+let dictionaryMeta;
+try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
+catch { throw new Error("The expanded offline dictionary metadata is missing or invalid."); }
+if (!Number.isInteger(dictionaryMeta.word_count) || dictionaryMeta.word_count < 120000 ||
+    !Number.isInteger(dictionaryMeta.sense_count) || dictionaryMeta.sense_count < 120000) {
+  throw new Error("The expanded offline dictionary is incomplete: expected at least 120,000 word forms and senses.");
+}
+if (!dictionaryMeta.license_url || !dictionaryMeta.source) throw new Error("Dictionary attribution metadata is missing.");
+for (const letter of "abcdefghijklmnopqrstuvwxyz") {
+  if (!exists("dictionary-data/" + letter + ".json.gz")) throw new Error("Missing offline dictionary shard: " + letter);
+}
+if (!exists("dictionary-data/other.json.gz")) throw new Error("Missing non-Latin offline dictionary shard.");
+const fullDictionaryScript = files.find(file => path.basename(file).startsWith("dictionary-full") && file.endsWith(".js"));
+if (!fullDictionaryScript) throw new Error("The lazy offline dictionary loader was not bundled.");
+
 const popupPath = manifest.action && manifest.action.default_popup;
 if (!popupPath || !exists(popupPath)) throw new Error("Manifest popup entry is missing from the build: " + popupPath);
 if (!exists("dashboard.html")) throw new Error("Build output is missing the stable dashboard.html runtime URL.");
@@ -28,6 +44,16 @@ if (!serviceWorkerPath || !exists(serviceWorkerPath)) throw new Error("Manifest 
 const csp = manifest.content_security_policy && manifest.content_security_policy.extension_pages || "";
 for (const token of ["wasm-unsafe-eval", "huggingface.co", "raw.githubusercontent.com"]) {
   if (!csp.includes(token)) throw new Error("Extension CSP is missing " + token);
+}
+const dictionaryResources = (manifest.web_accessible_resources || []).flatMap(item => item.resources || []);
+if (!dictionaryResources.includes("dictionary-data/*.json.gz") || !dictionaryResources.includes("dictionary-data/metadata.json")) {
+  throw new Error("Expanded offline dictionary assets are not exposed to content scripts. Emitted resources: " + JSON.stringify(manifest.web_accessible_resources || []));
+}
+const contentScripts = (manifest.content_scripts || []).flatMap(item => item.js || []);
+const fullDictionaryIndex = contentScripts.findIndex(src => path.basename(src).startsWith("dictionary-full") && src.endsWith(".js"));
+const engineIndex = contentScripts.findIndex(src => path.basename(src).startsWith("engine") && src.endsWith(".js"));
+if (fullDictionaryIndex < 0 || engineIndex < 0 || fullDictionaryIndex > engineIndex) {
+  throw new Error("The offline dictionary loader must run before the engine in content scripts.");
 }
 const hostPermissions = manifest.host_permissions || [];
 if (!hostPermissions.some(origin => origin.includes("huggingface.co")) || !hostPermissions.some(origin => origin.includes("raw.githubusercontent.com"))) {
@@ -40,6 +66,9 @@ for (const requiredHost of ["https://hf.co/*", "https://*.hf.co/*", "https://cdn
   if (!hostPermissions.includes(requiredHost)) throw new Error("Extension host permissions are missing Hugging Face CDN access: " + requiredHost);
 }
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
+if (!dashboard.includes("150,000 English word forms")) {
+  throw new Error("The expanded offline dictionary is not wired into the dashboard.");
+}
 if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw new Error("Local AI dashboard controls are missing.");
 if (!dashboard.includes("Qwen 2.5 1.5B") || !dashboard.includes("ai-specs")) {
   throw new Error("The Qwen model description/specifications are missing from the dashboard.");
@@ -50,6 +79,7 @@ if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) 
   throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
 }
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
+if (!dashboard.includes("VERSION <b>1.3.0</b>")) throw new Error("Dashboard version display is stale.");
 const scripts = files.filter(file => file.endsWith(".js"));
 if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The bundled WebLLM worker was not emitted into dist/.");
 const scriptBundles = await Promise.all(scripts.map(file => fs.readFile(file, "utf8")));
@@ -71,6 +101,7 @@ if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
+if (!files.some(file => path.basename(file).startsWith("dictionary-full") && file.endsWith(".js"))) throw new Error("The expanded offline dictionary loader is missing from the package.");
 if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The popup does not include the WebLLM bundle.");
 
 // Catch duplicate top-level lexical declarations that previously broke Edge.
