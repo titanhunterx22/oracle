@@ -67,6 +67,9 @@ if (!allScriptCode.includes("valid external instance reference no longer exists"
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
   throw new Error("WebGPU device-loss detection and recovery are missing from the build.");
 }
+if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
+  throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
+}
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
 if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The popup does not include the WebLLM bundle.");
 
