@@ -187,7 +187,21 @@
       buttons.forEach(button => { button.disabled = true; });
       try {
         const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
-        const result = E.textAction(id, selection, { lang: panel.__lang && panel.__lang.value, userDefs });
+        let result = E.textAction(id, selection, { lang: panel.__lang && panel.__lang.value, userDefs });
+        if (id === 'define' && O.dictionaryFull) {
+          const terms = [...new Set((selection.match(/[\\p{L}][\\p{L}’'\\-]{6,}/gu) || []).map(term => term.toLowerCase()))]
+            .sort((a, b) => b.length - a.length)
+            .slice(0, 8);
+          const expanded = [];
+          for (const term of terms) {
+            if (E.defineWord(term, null, userDefs).includes('isn’t in ORACLE’s bundled definition set yet.')) {
+              const found = await O.dictionaryFull.lookup(term).catch(() => null);
+              if (found) expanded.push(O.dictionaryFull.format(found));
+            }
+            if (expanded.length >= 4) break;
+          }
+          if (expanded.length) result += '\\n\\n## More offline definitions\\n\\n' + expanded.join('\\n\\n');
+        }
         if (typeof result !== 'string' || !result.trim()) throw new Error('The text tool returned an empty result.');
         show(id, result);
       } catch (error) {
