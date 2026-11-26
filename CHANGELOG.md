@@ -2,6 +2,7 @@
 
 - Upgraded Local AI to Qwen 2.5 1.5B Instruct q4f32 with a 2K context and a longer response budget.
 - Added model specifications and first-run status messaging to Settings.
+- Added private local Knowledge Vault retrieval so Qwen can ground responses in your own saved notes.
 - Refreshed the dashboard, chat, settings cards, navigation, popup and controls with a shared visual theme.
 
 # ORACLE 1.1.0
