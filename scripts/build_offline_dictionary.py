@@ -89,10 +89,9 @@ def build(source_zip: Path, output_dir: Path) -> dict:
     with zipfile.ZipFile(source_zip) as zf:
         archive_names = zf.namelist()
         json_names = [name for name in archive_names if name.lower().endswith(".json")]
-        names = [
-            name for name in json_names
-            if "/src/yaml/" in name or name.startswith("src/yaml/")
-        ]
+        # The official release ZIP intentionally flattens the JSON export:
+        # entries-a.json, noun.person.json, adj.all.json, etc. are at archive root.
+        names = json_names
         if not names:
             raise RuntimeError(
                 "Could not locate the WordNet JSON source files. "
