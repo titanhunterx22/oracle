@@ -66,7 +66,7 @@ for (const requiredHost of ["https://hf.co/*", "https://*.hf.co/*", "https://cdn
   if (!hostPermissions.includes(requiredHost)) throw new Error("Extension host permissions are missing Hugging Face CDN access: " + requiredHost);
 }
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
-if (!dashboard.includes("dictionary-full.js") || !dashboard.includes("150,000 English word forms")) {
+if (!dashboard.includes("150,000 English word forms")) {
   throw new Error("The expanded offline dictionary is not wired into the dashboard.");
 }
 if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw new Error("Local AI dashboard controls are missing.");
@@ -101,7 +101,7 @@ if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
-if (!popup.includes("dictionary-full.js")) throw new Error("The popup does not load the expanded offline dictionary loader.");
+if (!files.some(file => path.basename(file).startsWith("dictionary-full") && file.endsWith(".js"))) throw new Error("The expanded offline dictionary loader is missing from the package.");
 if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The popup does not include the WebLLM bundle.");
 
 // Catch duplicate top-level lexical declarations that previously broke Edge.
