@@ -33,7 +33,7 @@ for (const letter of "abcdefghijklmnopqrstuvwxyz") {
   if (!exists("dictionary-data/" + letter + ".json.gz")) throw new Error("Missing offline dictionary shard: " + letter);
 }
 if (!exists("dictionary-data/other.json.gz")) throw new Error("Missing non-Latin offline dictionary shard.");
-const fullDictionaryScript = scripts.find(file => /^dictionary-full(?:\\.[a-f0-9]+)?\\.js$/i.test(path.basename(file)));
+const fullDictionaryScript = files.find(file => path.basename(file).startsWith("dictionary-full") && file.endsWith(".js"));
 if (!fullDictionaryScript) throw new Error("The lazy offline dictionary loader was not bundled.");
 
 const popupPath = manifest.action && manifest.action.default_popup;
@@ -50,8 +50,8 @@ if (!dictionaryResources.includes("dictionary-data/*.json.gz") || !dictionaryRes
   throw new Error("Expanded offline dictionary assets are not exposed to content scripts.");
 }
 const contentScripts = (manifest.content_scripts || []).flatMap(item => item.js || []);
-const fullDictionaryIndex = contentScripts.findIndex(src => /dictionary-full(?:\\.[a-f0-9]+)?\\.js$/i.test(path.basename(src)));
-const engineIndex = contentScripts.findIndex(src => /engine(?:\\.[a-f0-9]+)?\\.js$/i.test(path.basename(src)));
+const fullDictionaryIndex = contentScripts.findIndex(src => path.basename(src).startsWith("dictionary-full") && src.endsWith(".js"));
+const engineIndex = contentScripts.findIndex(src => path.basename(src).startsWith("engine") && src.endsWith(".js"));
 if (fullDictionaryIndex < 0 || engineIndex < 0 || fullDictionaryIndex > engineIndex) {
   throw new Error("The offline dictionary loader must run before the engine in content scripts.");
 }
