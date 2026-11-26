@@ -52,7 +52,7 @@ input:focus,select:focus,textarea:focus{border-color:rgba(159,145,255,.72);box-s
 .workspace-head{min-height:88px;padding:17px 22px;border-radius:19px;background:linear-gradient(112deg,rgba(27,39,67,.94),rgba(15,30,49,.92))}
 .workspace-head h2{font-size:24px;font-weight:760;letter-spacing:-.04em;color:#f5f7ff}
 .workspace-head p{font-size:13px;color:#9aabc5;margin-top:3px}
-.workspace-head .eyebrow{color:#a99aff;letter-spacing:.2em}
+.workspace-head .eyebrow{color:var(--oracle-accent);letter-spacing:.2em}
 .local-pill{border-color:rgba(105,222,210,.23);background:rgba(43,174,160,.1);color:#98e5da}
 .local-pill i{box-shadow:0 0 12px rgba(105,222,210,.7)}
 .workspace-version{border:1px solid rgba(155,175,216,.15);border-radius:9px;padding:5px 8px;background:rgba(3,9,20,.22)}
