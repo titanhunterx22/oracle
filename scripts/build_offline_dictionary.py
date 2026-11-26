@@ -87,13 +87,17 @@ def build(source_zip: Path, output_dir: Path) -> dict:
     entry_files: list[str] = []
 
     with zipfile.ZipFile(source_zip) as zf:
+        archive_names = zf.namelist()
+        json_names = [name for name in archive_names if name.lower().endswith(".json")]
         names = [
-            name for name in zf.namelist()
-            if name.endswith(".json") and "/src/yaml/" in name
+            name for name in json_names
+            if "/src/yaml/" in name or name.startswith("src/yaml/")
         ]
         if not names:
             raise RuntimeError(
-                "The official WordNet JSON archive did not contain src/yaml/*.json files."
+                "Could not locate the WordNet JSON source files. "
+                "JSON archive members: " + repr(json_names[:50]) +
+                "; archive sample: " + repr(archive_names[:30])
             )
 
         synset_files = [
