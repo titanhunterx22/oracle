@@ -1,12 +1,13 @@
 {
   "name": "oracle-browser-extension",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "Build ORACLE for Chromium browsers with bundled WebLLM local AI.",
   "scripts": {
     "build": "parcel build manifest.json dashboard.html --config @parcel/config-webextension --dist-dir dist && node postbuild.mjs",
     "verify": "node verify-build.mjs",
-    "build:check": "npm run build && npm run verify"
+    "build:check": "npm run build && npm run build:dictionary && npm run verify",
+    "build:dictionary": "python3 scripts/build_offline_dictionary.py"
   },
   "dependencies": {
     "@mlc-ai/web-llm": "0.2.89",
