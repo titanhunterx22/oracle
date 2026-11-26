@@ -1,3 +1,9 @@
+# ORACLE 1.2.0
+
+- Upgraded Local AI to Qwen 2.5 1.5B Instruct q4f32 with a 2K context and a longer response budget.
+- Added model specifications and first-run status messaging to Settings.
+- Refreshed the dashboard, chat, settings cards, navigation, popup and controls with a shared visual theme.
+
 # ORACLE 1.1.0
 
 - Replaced the Chrome-only Prompt API/Gemini Nano adapter with WebLLM, a shared Chromium implementation using WebGPU.
