@@ -1,6 +1,6 @@
 # ORACLE 1.3.0
 
-- Expanded the offline English dictionary with Open English WordNet 2025+ (over 160,000 lexical forms and multiple senses per word).
+- Expanded the offline English dictionary with Open English WordNet 2025+ (over 150,000 lexical forms and multiple senses per word).
 - Added verified build-time dataset download and compact gzip alphabet shards, loaded on demand so ordinary pages do not parse the full dictionary.
 - Added attribution and Princeton WordNet licence notices, and updated dictionary search and chat fallbacks.
 
