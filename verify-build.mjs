@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.1.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.2.0") throw new Error("Unexpected extension version: " + manifest.version);
 const popupPath = manifest.action && manifest.action.default_popup;
 if (!popupPath || !exists(popupPath)) throw new Error("Manifest popup entry is missing from the build: " + popupPath);
 if (!exists("dashboard.html")) throw new Error("Build output is missing the stable dashboard.html runtime URL.");
@@ -46,11 +46,11 @@ const scripts = files.filter(file => file.endsWith(".js"));
 if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The bundled WebLLM worker was not emitted into dist/.");
 const scriptBundles = await Promise.all(scripts.map(file => fs.readFile(file, "utf8")));
 const allScriptCode = scriptBundles.join("\n");
-if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("1024")) {
-  throw new Error("The 1K low-memory WebLLM context-window override is missing from the build.");
+if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("2048")) {
+  throw new Error("The 2K Qwen WebLLM context-window override is missing from the build.");
 }
-if (!allScriptCode.includes("SmolLM2-360M-Instruct-q4f32_1-MLC")) {
-  throw new Error("The SmolLM2 360M low-memory model is missing from the build.");
+if (!allScriptCode.includes("Qwen2.5-1.5B-Instruct-q4f32_1-MLC")) {
+  throw new Error("The Qwen 2.5 1.5B model is missing from the build.");
 }
 if (!/max_tokens\s*:\s*160/.test(allScriptCode)) {
   throw new Error("The low-memory generation limit is missing from the build.");
