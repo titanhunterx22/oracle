@@ -21,7 +21,7 @@
     analyse: ['Page analysis', 'Turn the current page into summaries, notes and study material.'],
     text: ['Dictionary & text tools', 'Look up words or work with text you select or paste.'],
     vault: ['Knowledge vault', 'Keep your notes, definitions and saved page summaries together.'],
-    tools: ['Browser tools', 'Manage tabs, save pages, compare sources and read without distractions.'],
+    tools: ['Browser tools', 'Research across several open pages, manage tabs and compare sources.'],
     settings: ['Settings', 'Control your local experience and privacy preferences.']
   };
   function show(p) {
@@ -30,7 +30,7 @@
     $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.p === p));
     const meta = PANEL_META[p]; $('#panelTitle').textContent = meta[0]; $('#panelDescription').textContent = meta[1];
     history.replaceState(null, '', location.search + '#' + p);
-    if (p === 'vault') renderVault(); if (p === 'tools') { renderTabs(); renderBookmarks(); }
+    if (p === 'vault') renderVault(); if (p === 'tools') { renderTabs(); renderResearchTabs(); renderBookmarks(); }
   }
   $$('#nav button').forEach(b => b.onclick = () => show(b.dataset.p));
   const h0 = location.hash.slice(1);
@@ -51,7 +51,7 @@
   await loadTabs();
   const chat = await O.chat.mount({ log: $('#log'), input: $('#input'), form: $('#form'), chips: $('#chips'), clearBtn: $('#clear'), getTabId: () => tabId });
   $('#tabSel').onchange = () => { tabId = +$('#tabSel').value || null; chat.invalidate(); A = null; };
-  $('#tabRefresh').onclick = async () => { await loadTabs(); chat.invalidate(); toast('Tab list refreshed'); };
+  $('#tabRefresh').onclick = async () => { await loadTabs(); chat.invalidate(); await renderResearchTabs(); toast('Tab list refreshed'); };
   const needTab = async () => { const t = await T.targetTab(tabId); if (!t) throw new Error('Open a normal web page (http or https) in another tab, then press ↻ in the sidebar.'); return t; };
 
   /* ───── copy / save buttons ───── */
@@ -278,6 +278,9 @@
   $('#vAddC').onclick = async () => { await O.store.addCollection($('#vNewC').value); $('#vNewC').value = ''; renderVault(); };
   $('#vExport').onclick = async () => { const blob = new Blob([await O.store.exportAll()], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'oracle-vault.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
 
+  const CROSS_TAB_LIMIT = 5;
+  const researchSelected = new Set();
+  let researchTabs = [], lastCrossResearch = null, crossResearchBusy = false;
   /* ───── tab manager ───── */
   let tabData = { tabs: [], duplicates: [] };
   async function renderTabs() {
@@ -304,6 +307,207 @@
     if (!confirm(`Close ${ids.length} tab${ids.length > 1 ? 's' : ''}? This can’t be undone from ORACLE.`)) return;
     await T.closeTabs(ids); await renderTabs(); await loadTabs(); toast('Tabs closed');
   };
+
+  function updateResearchCount() {
+    const count = researchSelected.size;
+    $('#researchCount').textContent = count + ' of ' + CROSS_TAB_LIMIT + ' sources selected · ' + (count < 2 ? 'choose at least 2' : 'ready to research');
+    $('#researchRun').disabled = count < 2 || crossResearchBusy;
+  }
+  async function renderResearchTabs() {
+    const box = $('#researchTabList');
+    if (!box) return;
+    const tabs = await T.pageTabs();
+    researchTabs = tabs;
+    const openIds = new Set(tabs.map(t => t.id));
+    [...researchSelected].forEach(id => { if (!openIds.has(id)) researchSelected.delete(id); });
+    const query = ($('#researchTabSearch').value || '').trim().toLowerCase();
+    const visibleTabs = tabs.filter(t => ((t.title || '') + ' ' + t.url).toLowerCase().includes(query));
+    box.innerHTML = '';
+    if (!visibleTabs.length) {
+      box.innerHTML = '<div class="empty-note"><p>No readable HTTP/HTTPS tabs match this filter.</p></div>';
+      updateResearchCount();
+      return;
+    }
+    visibleTabs.forEach(tab => {
+      const selected = researchSelected.has(tab.id);
+      const row = document.createElement('div');
+      row.className = 'item research-tab-row' + (selected ? ' selected' : '');
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'research-tab-check';
+      check.checked = selected;
+      check.disabled = !selected && researchSelected.size >= CROSS_TAB_LIMIT;
+      check.setAttribute('aria-label', 'Include ' + (tab.title || tab.url) + ' in cross-tab research');
+      const copy = document.createElement('div');
+      copy.className = 'grow';
+      const title = document.createElement('div');
+      title.className = 't';
+      title.textContent = tab.title || tab.url;
+      const meta = document.createElement('div');
+      meta.className = 's';
+      meta.textContent = host(tab.url) + (tab.active ? ' · active tab' : '');
+      copy.append(title, meta);
+      const switchButton = document.createElement('button');
+      switchButton.type = 'button';
+      switchButton.className = 'btn sm research-switch';
+      switchButton.textContent = 'Switch';
+      switchButton.title = 'Switch to this tab';
+      switchButton.addEventListener('click', async () => {
+        try { await T.switchTo(tab); } catch (error) { toast(error.message || String(error)); }
+      });
+      check.addEventListener('change', () => {
+        if (check.checked) {
+          if (researchSelected.size >= CROSS_TAB_LIMIT) {
+            check.checked = false;
+            toast('Cross-tab research supports up to ' + CROSS_TAB_LIMIT + ' pages at once.');
+            return;
+          }
+          researchSelected.add(tab.id);
+        } else researchSelected.delete(tab.id);
+        renderResearchTabs();
+      });
+      row.append(check, copy, switchButton);
+      box.appendChild(row);
+    });
+    updateResearchCount();
+  }
+  $('#researchTabSearch').addEventListener('input', renderResearchTabs);
+  $('#researchRefresh').addEventListener('click', async () => {
+    try { await renderResearchTabs(); toast('Research tab list refreshed'); }
+    catch (error) { $('#researchStatus').textContent = error.message || String(error); }
+  });
+  $('#researchSelectFive').addEventListener('click', async () => {
+    try {
+      const query = ($('#researchTabSearch').value || '').trim().toLowerCase();
+      const visible = researchTabs.filter(t => ((t.title || '') + ' ' + t.url).toLowerCase().includes(query));
+      researchSelected.clear();
+      visible.slice(0, CROSS_TAB_LIMIT).forEach(t => researchSelected.add(t.id));
+      await renderResearchTabs();
+    } catch (error) { $('#researchStatus').textContent = error.message || String(error); }
+  });
+  $('#researchClearSelection').addEventListener('click', async () => {
+    researchSelected.clear();
+    await renderResearchTabs();
+  });
+  function renderResearchSources(sources) {
+    const box = $('#researchSources');
+    box.innerHTML = '';
+    if (!sources.length) { box.hidden = true; return; }
+    box.hidden = false;
+    const heading = document.createElement('div');
+    heading.className = 'research-sources-heading';
+    heading.textContent = 'Sources used';
+    box.appendChild(heading);
+    sources.forEach((source, index) => {
+      const item = document.createElement('div');
+      item.className = 'research-source';
+      const tag = document.createElement('span');
+      tag.className = 'badge';
+      tag.textContent = '[S' + (index + 1) + ']';
+      const link = document.createElement('a');
+      link.href = source.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = source.title || source.domain || ('Source ' + (index + 1));
+      const domain = document.createElement('small');
+      domain.textContent = source.domain || host(source.url);
+      item.append(tag, link, domain);
+      box.appendChild(item);
+    });
+  }
+  async function runCrossTabResearch() {
+    if (crossResearchBusy) return;
+    const out = $('#researchOut');
+    const selected = researchTabs.filter(t => researchSelected.has(t.id));
+    if (selected.length < 2) { fail(out, new Error('Select at least two open web pages first.')); return; }
+    const question = $('#researchQuestion').value.trim();
+    if (!question) { fail(out, new Error('Enter a research question for the selected pages.')); return; }
+    const unique = [], seen = new Set();
+    selected.forEach(tab => {
+      const key = T.normUrl(tab.url);
+      if (!seen.has(key)) { seen.add(key); unique.push(tab); }
+    });
+    if (unique.length < 2) { fail(out, new Error('The selected tabs contain the same page. Choose at least two different pages.')); return; }
+    crossResearchBusy = true;
+    $('#researchRun').disabled = true;
+    $('#researchSave').disabled = true;
+    $('#researchCopy').disabled = true;
+    $('#researchStatus').textContent = 'Reading ' + unique.length + ' pages on this device…';
+    setOut(out, '_Extracting readable page content from your selected tabs…_');
+    O.orb.set('analysing');
+    try {
+      const extracted = await Promise.all(unique.map(async tab => {
+        try {
+          const doc = await T.extract(tab.id);
+          if (!doc || typeof doc.text !== 'string' || doc.text.trim().length < 80) {
+            throw new Error('The page did not contain enough readable text.');
+          }
+          return { tab, doc };
+        } catch (error) {
+          return { tab, error: error && error.message ? error.message : String(error) };
+        }
+      }));
+      const successful = extracted.filter(item => item.doc);
+      const failed = extracted.filter(item => !item.doc);
+      if (successful.length < 2) {
+        const details = failed.map(item => (item.tab.title || host(item.tab.url)) + ': ' + item.error).join('\n');
+        throw new Error('ORACLE could read only ' + successful.length + ' selected page(s). At least two readable pages are required. Check that Edge allows ORACLE to access those websites, then reload the affected tabs.' + (details ? '\n\n' + details : ''));
+      }
+      const sources = successful.map((item, index) => ({
+        title: item.doc.title || item.tab.title || 'Untitled page',
+        url: item.doc.url || item.tab.url,
+        domain: item.doc.domain || host(item.tab.url),
+        text: item.doc.text
+      }));
+      $('#researchStatus').textContent = 'Synthesising ' + sources.length + ' sources with local Qwen…';
+      setOut(out, '_Qwen is checking agreement, disagreement and source evidence…_');
+      const result = await O.localAI.askTask('research', {
+        sources,
+        question: question + '\n\nUse source markers [S1], [S2], etc. for factual claims. Separate direct source evidence from inference, identify conflicts and state when the supplied pages do not establish an answer.'
+      });
+      const warning = failed.length
+        ? '\n\n> **Some selected pages could not be read:** ' + failed.map(item => (item.tab.title || host(item.tab.url)) + ' — ' + item.error).join('; ')
+        : '';
+      const report = result + warning;
+      setOut(out, report);
+      lastCrossResearch = { question, report, sources };
+      renderResearchSources(sources);
+      $('#researchStatus').textContent = 'Analysed ' + sources.length + ' sources' + (failed.length ? ' · ' + failed.length + ' unavailable' : '') + ' · processed on this device';
+      $('#researchSave').disabled = false;
+      $('#researchCopy').disabled = false;
+    } catch (error) {
+      fail(out, error);
+      $('#researchStatus').textContent = 'Research could not be completed.';
+    } finally {
+      crossResearchBusy = false;
+      updateResearchCount();
+      $('#researchSave').disabled = !lastCrossResearch;
+      $('#researchCopy').disabled = !lastCrossResearch;
+      O.orb.set('idle');
+    }
+  }
+  $('#researchRun').addEventListener('click', runCrossTabResearch);
+  $('#researchSave').addEventListener('click', async () => {
+    if (!lastCrossResearch) return;
+    try {
+      const sourceNotes = lastCrossResearch.sources.map((source, i) => '[S' + (i + 1) + '] ' + source.title + ' — ' + source.url).join('\n');
+      await O.store.addVault({
+        type: 'note',
+        title: 'Cross-tab research: ' + lastCrossResearch.question.slice(0, 72),
+        text: lastCrossResearch.report + '\n\n## Sources\n' + sourceNotes,
+        url: lastCrossResearch.sources[0] && lastCrossResearch.sources[0].url || ''
+      });
+      toast('Research report saved to your Knowledge Vault');
+    } catch (error) { toast(error.message || String(error)); }
+  });
+  $('#researchCopy').addEventListener('click', async () => {
+    if (!lastCrossResearch) return;
+    const sourceNotes = lastCrossResearch.sources.map((source, i) => '[S' + (i + 1) + '] ' + source.title + ' — ' + source.url).join('\n');
+    try {
+      await navigator.clipboard.writeText(lastCrossResearch.report + '\n\n## Sources\n' + sourceNotes);
+      toast('Research report copied');
+    } catch (_) { toast('Copy was blocked by the browser'); }
+  });
 
   /* ───── bookmarks ───── */
   async function renderBookmarks() {
