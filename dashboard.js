@@ -136,7 +136,7 @@
     qs = Array.isArray(qs) ? qs : [];
     out._raw = '## Quiz\n\n' + qs.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n');
     if (!qs.length) { out.innerHTML = O.md('No quiz questions were generated. Please try again.'); return; }
-    out.innerHTML = '<p class="mute">Fill in the blank. Pick an answer.</p><div id="qs"></div><p id="score"></p>'; let done = 0, right = 0;
+    out.innerHTML = '<p class="mute">Choose an answer. ORACLE explains it after you select.</p><div id="qs"></div><p id="score"></p>'; let done = 0, right = 0;
     qs.forEach((q, i) => {
       const d = document.createElement('div'); d.className = 'q'; const p = document.createElement('p'); p.textContent = `${i + 1}. ${q.q}`; d.appendChild(p);
       q.options.forEach((o, k) => { const b = document.createElement('button'); b.className = 'btn opt'; b.textContent = o; b.onclick = () => { d.querySelectorAll('button').forEach(x => (x.disabled = true)); const ok = k === q.answer; b.classList.add(ok ? 'ok' : 'no'); if (!ok) d.querySelectorAll('button')[q.answer].classList.add('ok'); const explanation = document.createElement('p'); explanation.className = 'mute'; explanation.textContent = (ok ? 'Correct. ' : 'Not quite. ') + (q.explanation || 'The correct answer is ' + q.options[q.answer] + '.'); d.appendChild(explanation); done++; if (ok) right++; if (done === qs.length) $('#score').innerHTML = `<b>Score: ${right} / ${qs.length}</b>`; }; d.appendChild(b); });
@@ -375,7 +375,7 @@
         const label = detail || (percent >= 100 ? 'Finishing model setup' : 'Preparing local model');
         aiStatus.textContent = percent >= 100 ? (label + ' (finalising…)') : (label + ' · ' + percent + '%');
       });
-      aiStatus.textContent = 'Local AI is ready. Ask ORACLE an open-ended question in Chat.';
+      aiStatus.textContent = 'Qwen is ready for AI-powered page analysis, chat, definitions and study tools.';
       aiPrepare.textContent = 'Local AI ready';
     } catch (error) {
       aiStatus.textContent = error && error.message ? error.message : String(error);
