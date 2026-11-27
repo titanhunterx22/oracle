@@ -15,13 +15,16 @@
 
   async function status() {
     if (!O || !O.localAI) throw new Error('The local AI runtime did not load in its offscreen document.');
+    if (preparing) {
+      return {
+        state: 'preparing',
+        message: progress.detail + (progress.percent ? ' · ' + progress.percent + '%' : ''),
+        progress,
+        lastError: ''
+      };
+    }
     const info = await O.localAI.status();
-    if (preparing) return Object.assign({}, info, {
-      state: 'preparing',
-      message: progress.detail + (progress.percent ? ' · ' + progress.percent + '%' : ''),
-      progress
-    });
-    if (lastError) return Object.assign({}, info, { lastError });
+    if (lastError) return Object.assign({}, info, { lastError, message: lastError });
     return Object.assign({}, info, { progress });
   }
 
