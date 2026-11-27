@@ -132,7 +132,7 @@ if (!allScriptCode.includes("valid external instance reference no longer exists"
 if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
 }
-if (!allScriptCode.includes("fab-orbit") || !allScriptCode.includes("Research selected tabs")) {
+if (!allScriptCode.includes("fab-orbit") || !allScriptCode.includes("Research tab list refreshed")) {
   throw new Error("The refreshed selection orb or cross-tab research controls are missing from the build.");
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
