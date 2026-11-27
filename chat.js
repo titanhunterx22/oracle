@@ -134,7 +134,7 @@
               const pageTask = ['quick', 'detailed', 'keypoints', 'study', 'facts', 'cards', 'quiz'].includes(task);
               if (asksForSelection) selection = await env.getSelection();
               else if (pageTask || asksAboutPage) doc = await env.getPage();
-              else if (task === 'simple' && ctx.last && /\b(that|this|it|previous|last|above)\b/i.test(text)) selection = O.plain(ctx.last).slice(0, 3200);
+              else if (['simple', 'explain', 'keypoints'].includes(task) && ctx.last && /\b(that|this|it|previous|last|above|again)\b/i.test(text)) selection = O.plain(ctx.last).slice(0, 3200);
 
               if (task === 'define') {
                 const found = text.match(/(?:define|definition of|meaning of|what does)\s+["“'‘]?([\p{L}][\p{L}'’\-]{0,59})/iu);
