@@ -25,7 +25,8 @@
     "storage",
     "tabs",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "offscreen"
   ],
   "content_scripts": [
     {
@@ -39,6 +40,7 @@
         "engine.js",
         "storage.js",
         "palette.js",
+        "local-ai-bridge.js",
         "content.js"
       ],
       "run_at": "document_idle"
