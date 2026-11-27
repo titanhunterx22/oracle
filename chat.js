@@ -147,7 +147,10 @@
               keywords: 'keywords'
             };
             const task = aiTasks[intent];
-            if ((task || intent === 'none') && O.localAI) {
+            if (task || intent === 'none') {
+              if (!O.localAI || typeof O.localAI.askTask !== 'function') {
+                throw new Error('Local Qwen is not available. Open Dashboard → Settings → Local AI reasoning, prepare the model, then reload ORACLE.');
+              }
               let doc = null, selection = '', extra = {};
               const asksForSelection = /\b(selected|selection|highlight)\b/i.test(text);
               const asksAboutPage = /\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text);
