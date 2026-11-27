@@ -79,16 +79,51 @@
     const items = [['Title', clipS(d.title, 46)], ['Domain', d.domain], ['Words', rs.words.toLocaleString()], ['Reading time', rs.minutes + ' min'], ['Difficulty', rs.label + (rs.grade != null ? ` · grade ${rs.grade}` : '')], ['Headings', d.blocks.filter(b => b.t[0] === 'h').length], ['Links', `${d.links.length} (${ext} external)`], ['Main subject', kw || '—']];
     $('#stats').innerHTML = ''; items.forEach(([k, v], i) => { const s = document.createElement('div'); s.className = 'stat'; s.style.animationDelay = i * 40 + 'ms'; s.innerHTML = '<b></b><span></span>'; s.firstChild.textContent = v; s.lastChild.textContent = k; $('#stats').appendChild(s); });
   }
+  function parseGeneratedJSON(raw, key) {
+    const source = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+    const first = source.indexOf('{'), last = source.lastIndexOf('}');
+    if (first < 0 || last <= first) return null;
+    try {
+      const value = JSON.parse(source.slice(first, last + 1));
+      const items = value && value[key];
+      return Array.isArray(items) ? items : null;
+    } catch (_) { return null; }
+  }
+
   async function renderMode(m) {
-    mode = m; $$('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    mode = m; $('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
     const out = $('#aOut');
     try {
       const doc = A && A.tab === (+$('#tabSel').value || A.tab) ? A.doc : await analyse();
-      O.orb.set('responding', 700);
-      if (m === 'cards') return renderCards(out, doc);
-      if (m === 'quiz') return renderQuiz(out, doc);
-      setOut(out, E.modes[m](doc));
+      O.orb.set('analysing');
+      setOut(out, '_Qwen is reading the page and preparing an analysis…_');
+      const questions = {
+        quick: 'Give me a useful overview of this page, including its central message and the most important supporting ideas.',
+        detailed: 'Give me a genuinely in-depth analysis of this page, explaining the ideas, evidence, relationships, implications and limitations.',
+        keypoints: 'Identify and explain the most important points from this page and why each matters.',
+        simple: 'Teach me the content of this page in clear, accessible language, explaining technical terms and difficult ideas.',
+        study: 'Turn this page into detailed, well-organised revision notes that help me understand and remember it.',
+        facts: 'Analyse this page and extract its important facts, figures, names, dates, claims and supporting evidence. Separate facts from interpretation.',
+        cards: 'Create useful flashcards from this page that test genuine understanding.',
+        quiz: 'Create a multiple-choice quiz from this page, with plausible distractors, correct answers and explanations.'
+      };
+      const generated = await O.localAI.askTask(m, { page: doc, question: questions[m] || 'Analyse this page.' });
+      if (m === 'cards') {
+        const cards = parseGeneratedJSON(generated, 'cards');
+        if (cards && cards.length) return renderCards(out, cards.filter(c => c && typeof c.q === 'string' && typeof c.a === 'string').slice(0, 10));
+      }
+      if (m === 'quiz') {
+        const questions = parseGeneratedJSON(generated, 'questions');
+        const valid = (questions || []).filter(q =>
+          q && typeof q.q === 'string' && Array.isArray(q.options) && q.options.length === 4 &&
+          q.options.every(option => typeof option === 'string') &&
+          Number.isInteger(q.answer) && q.answer >= 0 && q.answer <= 3
+        ).slice(0, 8);
+        if (valid.length) return renderQuiz(out, valid);
+      }
+      setOut(out, generated);
     } catch (e) { fail(out, e); }
+    finally { O.orb.set('idle'); }
   }
   function renderCards(out, doc) {
     const cards = E.flashcards(doc); out._raw = E.cardsText(cards);
@@ -111,29 +146,87 @@
 
   /* ───── text assistant ───── */
   $('#grab').onclick = async () => { try { const t = await needTab(); const s = await T.selection(t.id); if (!s) throw new Error('Nothing is selected on that page. Highlight some text there first.'); $('#tIn').value = s; toast('Selection copied in'); } catch (e) { fail($('#tOut'), e); } };
-  $$('[data-t]').forEach(b => b.onclick = async () => {
-    const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
-    O.orb.set('processing', 600); setOut($('#tOut'), E.textAction(b.dataset.t, $('#tIn').value, { lang: $('#tLang').value, userDefs }));
+  const textTasks = {
+    explain: 'explain',
+    simplify: 'simple',
+    summarise: 'summarise',
+    define: 'define',
+    keypoints: 'keypoints',
+    revision: 'study',
+    flashcards: 'cards',
+    translate: 'translate'
+  };
+  async function dictionaryContextFor(text, userDefs) {
+    const terms = [...new Set((String(text || '').match(/[\p{L}][\p{L}’'\-]{5,}/gu) || []).map(x => x.toLowerCase()))]
+      .sort((a, b) => b.length - a.length).slice(0, 5);
+    const references = [];
+    for (const word of terms) {
+      const own = E.defineWord(word, null, userDefs);
+      if (!own.includes('isn’t in ORACLE’s bundled definition set yet.')) {
+        references.push(own);
+      } else if (O.dictionaryFull) {
+        const item = await O.dictionaryFull.lookup(word).catch(() => null);
+        if (item) references.push(O.dictionaryFull.format(item));
+      }
+      if (references.length >= 4) break;
+    }
+    return references.join('\n\n');
+  }
+  $('[data-t]').forEach(b => b.onclick = async () => {
+    const text = $('#tIn').value.trim(), task = textTasks[b.dataset.t];
+    if (!text) { fail($('#tOut'), new Error('Paste text or grab a page selection first.')); return; }
+    b.disabled = true; O.orb.set('processing');
+    setOut($('#tOut'), '_Qwen is working on your text…_');
+    try {
+      const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
+      const reference = task === 'define' ? await dictionaryContextFor(text, userDefs) : '';
+      const answer = await O.localAI.askTask(task, {
+        question: {
+          explain: 'Explain this passage in depth and clarify its important ideas.',
+          simple: 'Rewrite and explain this passage in plain, accessible language.',
+          summarise: 'Summarise this passage without losing its important meaning.',
+          define: 'Identify and explain the important vocabulary in this passage, especially how each term is used here.',
+          keypoints: 'Extract and explain the key ideas and why they matter.',
+          study: 'Create detailed revision notes from this passage.',
+          cards: 'Create understanding-focused flashcards from this passage.',
+          translate: 'Translate this passage naturally and accurately.'
+        }[task],
+        selection: text,
+        reference,
+        language: $('#tLang').value
+      });
+      setOut($('#tOut'), answer);
+    } catch (error) { fail($('#tOut'), error); }
+    finally { b.disabled = false; O.orb.set('idle'); }
   });
   /* ───── offline dictionary ───── */
   const dictLookup = async () => {
     const word = $('#dictWord').value.trim();
     if (!word) { setOut($('#dictOut'), 'Enter a word to look up.'); $('#dictWord').focus(); return; }
+    $('#dictLookup').disabled = true;
     try {
       const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
       const curated = E.defineWord(word, null, userDefs);
-      if (!curated.includes('isn’t in ORACLE’s bundled definition set yet.')) {
-        setOut($('#dictOut'), curated);
-        return;
+      let dictionaryEntry = curated;
+      if (curated.includes('isn’t in ORACLE’s bundled definition set yet.')) {
+        setOut($('#dictOut'), '**Looking through the expanded offline dictionary…**');
+        const full = O.dictionaryFull ? await O.dictionaryFull.lookup(word).catch(error => {
+          throw new Error('The expanded offline dictionary could not be opened: ' + error.message);
+        }) : null;
+        if (full) dictionaryEntry = O.dictionaryFull.format(full);
       }
-      setOut($('#dictOut'), '**Looking through the expanded offline dictionary…**');
-      const full = O.dictionaryFull ? await O.dictionaryFull.lookup(word).catch(error => {
-        throw new Error('The expanded offline dictionary could not be opened: ' + error.message);
-      }) : null;
-      setOut($('#dictOut'), full
-        ? O.dictionaryFull.format(full)
-        : curated);
+      setOut($('#dictOut'), '_Qwen is preparing a clear explanation using ORACLE’s dictionary data…_');
+      try {
+        const explanation = await O.localAI.askTask('define', {
+          question: 'Explain the word “' + word + '” clearly and in depth. Cover its different meanings where relevant, part of speech, typical usage, connotations and a natural example.',
+          reference: dictionaryEntry
+        });
+        setOut($('#dictOut'), explanation + '\n\n---\n\n**Offline dictionary reference**\n\n' + dictionaryEntry);
+      } catch (error) {
+        setOut($('#dictOut'), dictionaryEntry + '\n\n> AI explanation unavailable: ' + (error && error.message ? error.message : String(error)));
+      }
     } catch (e) { fail($('#dictOut'), e); }
+    finally { $('#dictLookup').disabled = false; }
   };
   $('#dictLookup').onclick = dictLookup;
   $('#dictWord').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dictLookup(); } });
