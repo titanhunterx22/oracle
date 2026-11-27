@@ -132,3 +132,68 @@ input[type=range]{accent-color:#9a82ff}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 [hidden]{display:none!important}
 .empty>div:empty::before{content:'✦';display:grid;place-items:center;height:100%;color:#ded9ff;font-size:17px;text-shadow:0 0 13px rgba(187,174,255,.7)}
+
+
+/* ── electric thinking / analysis effects ── */
+.orb .energy{
+  inset:-13%;border:1px solid rgba(91,232,255,.48);
+  border-top-color:transparent;border-left-color:rgba(91,232,255,.72);
+  border-bottom-color:rgba(165,139,255,.65);
+  opacity:0;box-shadow:0 0 10px rgba(74,219,255,.22),inset 0 0 10px rgba(105,155,255,.1)
+}
+.orb .bolt{
+  inset:auto;width:15%;height:33%;border-radius:0;opacity:0;z-index:4;
+  background:linear-gradient(180deg,#fff 0%,#c8fbff 28%,#58e5ff 67%,#a58aff 100%);
+  clip-path:polygon(55% 0,18% 54%,45% 54%,24% 100%,88% 37%,59% 37%,79% 0);
+  filter:drop-shadow(0 0 3px rgba(160,249,255,.95)) drop-shadow(0 0 7px rgba(83,197,255,.8));
+  mix-blend-mode:screen;transform-origin:center
+}
+.orb .bolt.b1{top:1%;left:14%;--bolt-tilt:-25deg}
+.orb .bolt.b2{top:12%;right:5%;--bolt-tilt:28deg;animation-delay:.32s}
+.orb .bolt.b3{bottom:0;left:65%;--bolt-tilt:14deg;animation-delay:.68s}
+.orb[data-state=processing] .energy,
+.orb[data-state=analysing] .energy,
+.orb[data-state=responding] .energy{opacity:.78;animation:spin 2.6s linear infinite}
+.orb[data-state=processing] .bolt,
+.orb[data-state=analysing] .bolt,
+.orb[data-state=responding] .bolt{animation:arcFlash 1.55s steps(1,end) infinite}
+.orb[data-state=analysing] .energy{animation-duration:1.75s;border-color:rgba(91,238,255,.8);border-top-color:transparent}
+.orb[data-state=analysing] .bolt{animation-duration:1.05s}
+.orb[data-state=responding] .bolt{animation-duration:1.8s}
+.orb[data-state=error] .bolt{display:none}
+@keyframes arcFlash{
+  0%,8%,15%,37%,45%,100%{opacity:0;transform:scale(.62) rotate(var(--bolt-tilt))}
+  9%,13%,40%,43%{opacity:1;transform:scale(1.08) rotate(var(--bolt-tilt))}
+}
+.msg.bot.thinking{
+  display:flex;align-items:center;gap:8px;min-height:36px;
+  border-color:rgba(91,220,255,.42);
+  background:radial-gradient(160px 60px at 12% 50%,rgba(42,177,218,.18),transparent 80%),linear-gradient(145deg,rgba(24,49,73,.96),rgba(16,30,48,.96));
+  box-shadow:0 0 0 1px rgba(64,208,255,.06),0 0 18px rgba(45,189,235,.1);
+  animation:thinkingPulse 1.9s ease-in-out infinite
+}
+.thinking-bolt{
+  flex:none;color:#a7f7ff;font-size:18px;line-height:1;
+  text-shadow:0 0 5px #67eaff,0 0 13px rgba(70,204,255,.9);
+  animation:thinkingSpark .95s steps(2,end) infinite
+}
+.thinking-label{color:#a5eefa;font-size:9px;font-weight:850;letter-spacing:.14em;white-space:nowrap}
+.msg.bot.thinking .typing{padding:2px 1px;margin-left:1px}
+@keyframes thinkingPulse{
+  50%{border-color:rgba(116,235,255,.7);box-shadow:0 0 0 1px rgba(64,208,255,.1),0 0 24px rgba(45,189,235,.2)}
+}
+@keyframes thinkingSpark{
+  0%,100%{opacity:.72;transform:scale(.9)}
+  48%{opacity:1;transform:scale(1.15)}
+  56%{opacity:.48;transform:scale(.86)}
+}
+@media(prefers-reduced-motion:reduce){
+  .orb[data-state=processing] .bolt,.orb[data-state=analysing] .bolt,.orb[data-state=responding] .bolt{opacity:.35}
+  .msg.bot.thinking{animation:none}
+  .thinking-bolt{animation:none}
+}
+html.calm .orb[data-state=processing] .bolt,
+html.calm .orb[data-state=analysing] .bolt,
+html.calm .orb[data-state=responding] .bolt{opacity:.35}
+html.calm .msg.bot.thinking{animation:none}
+html.calm .thinking-bolt{animation:none}
