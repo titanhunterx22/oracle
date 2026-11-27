@@ -590,7 +590,7 @@
   /* ───── writing assistant ───── */
   const WRITER_KEY = 'oracle_writing_workspace_v1';
   const WRITER_LIMIT = 4200;
-  let writerLastResult = '', writerLastIsReview = false, writerPreviousDraft = '', writerInputSnapshot = '', writerBusy = false, writerSaveTimer = 0;
+  let writerLastResult = '', writerLastIsReview = false, writerPreviousDraft = '', writerInputSnapshot = '', writerOriginalDraft = '', writerBusy = false, writerSaveTimer = 0;
   const writerDraft = $('#writerDraft'), writerResult = $('#writerResult');
   function writerCount() {
     const value = writerDraft.value || '';
@@ -709,6 +709,7 @@
     writerLastResult = '';
     writerLastIsReview = !!reviewOnly;
     writerInputSnapshot = draft;
+    writerOriginalDraft = draft;
     ['writerRun','writerReview'].forEach(id => { $('#' + id).disabled = true; });
     ['writerCopyResult','writerApply','writerSaveResult'].forEach(id => { $('#' + id).disabled = true; });
     $('#writerResultTitle').textContent = reviewOnly ? 'Draft review' : 'Your improved draft';
@@ -742,7 +743,7 @@
       $('#writerResultTitle').textContent = reviewOnly ? 'Editorial feedback' : 'Your improved draft';
       $('#writerResultMeta').textContent = (reviewOnly ? 'Review complete' : 'Draft ready') + ' · ' + (result.match(/[\p{L}\p{N}]+/gu) || []).length + ' words';
       $('#writerCopyResult').disabled = false;
-      $('#writerApply').disabled = !!reviewOnly || writerDraft.value.trim() !== writerInputSnapshot;
+      $('#writerApply').disabled = !!reviewOnly || writerDraft.value.trim() !== writerInputSnapshot || writerLastResult.length > WRITER_LIMIT;
       $('#writerSaveResult').disabled = false;
       writerSetStatus(reviewOnly ? 'Review complete · original draft preserved' : 'Draft improved · original text is still unchanged');
     } catch (error) {
@@ -764,6 +765,7 @@
   });
   $('#writerApply').addEventListener('click', () => {
     if (!writerLastResult || writerLastIsReview || writerDraft.value.trim() !== writerInputSnapshot) return;
+    if (writerLastResult.length > WRITER_LIMIT) { toast('This result is longer than the editor limit. Copy it instead.'); return; }
     writerPreviousDraft = writerDraft.value;
     writerDraft.value = writerLastResult.slice(0, WRITER_LIMIT);
     writerInputSnapshot = writerDraft.value.trim();
@@ -779,7 +781,7 @@
       await O.store.addVault({
         type: 'note',
         title: 'Writing assistant · ' + task + ' · ' + new Date().toLocaleDateString(),
-        text: '## Original draft\n\n' + writerInputSnapshot + '\n\n## ' + task + '\n\n' + writerLastResult
+        text: '## Original draft\n\n' + writerOriginalDraft + '\n\n## ' + task + '\n\n' + writerLastResult
       });
       toast('Writing result saved to your Knowledge Vault');
     } catch (error) { toast(error.message || String(error)); }
@@ -826,7 +828,7 @@
   $('#sCalm').onchange = e => { O.store.saveSettings({ reduceMotion: e.target.checked }); document.documentElement.classList.toggle('calm', e.target.checked); };
   $('#sShort').onclick = () => { const url = (navigator.userAgent.includes('Edg/') ? 'edge' : 'chrome') + '://extensions/shortcuts'; chrome.tabs.create({ url }).catch(() => { $('#sShortMsg').textContent = 'Open ' + url + ' in a new tab.'; }); };
   $('#sClearChat').onclick = () => { $('#clear').click(); toast('Conversation cleared'); };
-  $('#sClearAll').onclick = async () => { if (confirm('Delete ALL ORACLE data (chat, vault, bookmarks, settings)? This can’t be undone.')) { await O.store.clearAll(); location.hash = '#chat'; location.reload(); } };
+  $('#sClearAll').onclick = async () => { if (confirm('Delete ALL ORACLE data (chat, vault, bookmarks, settings)? This can’t be undone.')) { await O.store.clearAll(); await chrome.storage.local.remove(WRITER_KEY); location.hash = '#chat'; location.reload(); } };
 
   /* ───── command palette (Ctrl/Cmd+K) ───── */
   const run = async (m, title) => { show('analyse'); await renderMode(m); };
