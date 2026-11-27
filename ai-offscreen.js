@@ -5,6 +5,13 @@
   let preparing = null;
   let progress = { percent: 0, detail: 'Waiting for local model setup' };
   let lastError = '';
+  let inferenceQueue = Promise.resolve();
+
+  function runSerial(task) {
+    const next = inferenceQueue.then(task, task);
+    inferenceQueue = next.catch(() => {});
+    return next;
+  }
 
   function updateProgress(percent, detail) {
     progress = {
@@ -59,14 +66,18 @@
         case 'ask':
         case 'askTask':
           if (preparing) await preparing;
-          lastError = '';
-          if (message.action === 'askTask') {
-            return { ok: true, text: await O.localAI.askTask(message.task, message.options || {}) };
-          }
-          return { ok: true, text: await O.localAI.ask(message.question, message.options || {}) };
+          return await runSerial(async () => {
+            lastError = '';
+            if (message.action === 'askTask') {
+              return { ok: true, text: await O.localAI.askTask(message.task, message.options || {}) };
+            }
+            return { ok: true, text: await O.localAI.ask(message.question, message.options || {}) };
+          });
         case 'destroy':
-          await O.localAI.destroy();
-          return { ok: true };
+          return await runSerial(async () => {
+            await O.localAI.destroy();
+            return { ok: true };
+          });
         default:
           throw new Error('Unknown local AI action: ' + String(message.action || ''));
       }
