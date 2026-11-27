@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.4.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.4.1") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -87,8 +87,11 @@ const styleCode = (await Promise.all(styleFiles.map(file => fs.readFile(file, "u
 if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) {
   throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
 }
+if (!styleCode.includes(".orb .bolt") || !styleCode.includes(".msg.bot.thinking") || !styleCode.includes("@keyframes arcFlash")) {
+  throw new Error("The electric orb animation and chat thinking indicator are missing from the packaged stylesheets.");
+}
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.4.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.4.1</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("dashboard.")) throw new Error("Dashboard application scripts are missing from the built dashboard.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
 if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {
@@ -122,6 +125,9 @@ if (!offscreenSource.includes("runSerial") || !offscreenSource.includes("inferen
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
   throw new Error("WebGPU device-loss detection and recovery are missing from the build.");
+}
+if (!allScriptCode.includes("ANALYSING PAGE") || !allScriptCode.includes("thinking-bolt")) {
+  throw new Error("The live chat thinking/analysis status indicator is missing from the build.");
 }
 if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
