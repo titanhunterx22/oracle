@@ -138,9 +138,15 @@
   /* ───────── shadow-DOM UI host (selection helper + result panel) ───────── */
   const UI_CSS = `
   :host{all:initial}*{box-sizing:border-box}
-  .fab{position:fixed;z-index:2147483646;width:34px;height:34px;border-radius:50%;border:1px solid rgba(160,140,255,.6);background:radial-gradient(circle at 35% 30%,#c4b5fd,#6d3df5 55%,#1b1050);box-shadow:0 0 18px rgba(139,92,246,.75);cursor:pointer;animation:pop .18s ease-out;padding:0}
-  .fab:hover{box-shadow:0 0 26px rgba(34,211,238,.8)}
-  @keyframes pop{from{transform:scale(.4);opacity:0}}
+  .fab{position:fixed;z-index:2147483646;width:38px;height:38px;display:grid;place-items:center;overflow:hidden;border-radius:50%;border:1px solid rgba(225,216,255,.8);background:linear-gradient(145deg,#f0eaff 0%,#bba8f5 28%,#8064df 62%,#49318f 100%);box-shadow:0 3px 12px rgba(31,22,65,.32),inset 0 1px 2px rgba(255,255,255,.78),inset 0 -3px 7px rgba(39,24,83,.22);cursor:pointer;animation:pop .16s ease-out;padding:0;transition:transform .16s ease,box-shadow .16s ease}
+  .fab:before{content:"";position:absolute;inset:3px;border-radius:50%;background:radial-gradient(circle at 31% 19%,rgba(255,255,255,.72),rgba(255,255,255,.12) 34%,transparent 60%);pointer-events:none}
+  .fab .fab-orbit{position:absolute;inset:6px;border:1px solid rgba(255,255,255,.44);border-radius:50%;transform:rotate(-34deg) scaleX(.72);pointer-events:none}
+  .fab .fab-core{position:relative;display:grid;place-items:center;width:100%;height:100%;color:#fff;text-shadow:0 1px 3px rgba(35,20,85,.5)}
+  .fab svg{display:block;width:17px;height:17px;filter:drop-shadow(0 1px 2px rgba(35,20,85,.35))}
+  .fab:hover{transform:translateY(-2px) scale(1.04);box-shadow:0 6px 16px rgba(55,38,111,.34),inset 0 1px 2px rgba(255,255,255,.82),inset 0 -3px 7px rgba(39,24,83,.2)}
+  .fab:active{transform:scale(.96)}
+  .fab:focus-visible{outline:2px solid #cfc3ff;outline-offset:3px}
+  @keyframes pop{from{transform:scale(.78);opacity:0}to{transform:scale(1);opacity:1}}
   .panel{position:fixed;right:18px;bottom:18px;z-index:2147483646;width:min(400px,calc(100vw - 36px));max-height:74vh;display:flex;flex-direction:column;background:rgba(10,13,31,.96);color:#e8eaf6;border:1px solid rgba(150,140,255,.32);border-radius:14px;box-shadow:0 18px 70px rgba(80,60,255,.4);font:13.5px/1.5 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;animation:slide .22s ease-out}
   @keyframes slide{from{opacity:0;transform:translateY(14px)}}
   .hd{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid rgba(150,140,255,.15)}
@@ -257,7 +263,8 @@
       if (t.length < 3 || t.length > 20000 || !s.rangeCount) { clearFab(); return; }
       lastSel = t; ui(); clearFab();
       const r = s.getRangeAt(0).getBoundingClientRect();
-      const b = document.createElement('button'); b.className = 'fab'; b.title = 'Send to ORACLE'; b.setAttribute('aria-label', 'Send selection to ORACLE');
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'fab'; b.title = 'Open ORACLE selection assistant'; b.setAttribute('aria-label', 'Open ORACLE selection assistant');
+      b.innerHTML = '<span class="fab-orbit" aria-hidden="true"></span><span class="fab-core" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2.8c1.2 4.8 2.6 6.2 9.2 9.2-6.6 3-8 4.4-9.2 9.2-1.2-4.8-2.6-6.2-9.2-9.2 6.6-3 8-4.4 9.2-9.2Z" fill="currentColor"/><circle cx="18.5" cy="5.5" r="1.15" fill="#fff" opacity=".85"/></svg></span>';
       b.style.left = Math.min(innerWidth - 44, Math.max(6, r.right + 6)) + 'px'; b.style.top = Math.min(innerHeight - 44, Math.max(6, r.bottom + 6)) + 'px';
       b.onmousedown = ev => ev.preventDefault();
       b.onclick = () => openPanel({ title: 'Selection', selection: lastSel });
