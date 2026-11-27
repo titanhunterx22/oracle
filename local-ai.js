@@ -330,7 +330,7 @@
 
     const prior = historyMessages(options.history);
     const messages = [{ role: 'system', content: SYSTEM }]
-      .concat(options.task ? prior.slice(-1) : prior)
+      .concat(prior.slice(-2))
       .concat([{ role: 'user', content: makeUserPrompt(question, options) }]);
 
     let answer = '';
