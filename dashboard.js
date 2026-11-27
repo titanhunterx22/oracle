@@ -125,19 +125,21 @@
     } catch (e) { fail(out, e); }
     finally { O.orb.set('idle'); }
   }
-  function renderCards(out, doc) {
-    const cards = E.flashcards(doc); out._raw = E.cardsText(cards);
-    if (!cards.length) { out.innerHTML = O.md(out._raw); return; }
+  function renderCards(out, cards) {
+    cards = Array.isArray(cards) ? cards : [];
+    out._raw = '## Flashcards\n\n' + cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n');
+    if (!cards.length) { out.innerHTML = O.md('No flashcards were generated. Please try again.'); return; }
     out.innerHTML = '<p class="mute">Click a card to flip it.</p><div class="fcgrid"></div>';
     cards.forEach(c => { const f = document.createElement('div'); f.className = 'fc'; f.tabIndex = 0; f.innerHTML = '<div><small class="mute"></small><p></p></div>'; const lab = f.querySelector('small'), p = f.querySelector('p'); lab.textContent = 'Question'; p.textContent = c.q; const flip = () => { const on = f.classList.toggle('flip'); lab.textContent = on ? 'Answer' : 'Question'; p.textContent = on ? c.a : c.q; }; f.onclick = flip; f.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); flip(); } }; out.querySelector('.fcgrid').appendChild(f); });
   }
-  function renderQuiz(out, doc) {
-    const qs = E.quiz(doc); out._raw = E.quizText(qs);
-    if (!qs.length) { out.innerHTML = O.md(out._raw); return; }
+  function renderQuiz(out, qs) {
+    qs = Array.isArray(qs) ? qs : [];
+    out._raw = '## Quiz\n\n' + qs.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n');
+    if (!qs.length) { out.innerHTML = O.md('No quiz questions were generated. Please try again.'); return; }
     out.innerHTML = '<p class="mute">Fill in the blank. Pick an answer.</p><div id="qs"></div><p id="score"></p>'; let done = 0, right = 0;
     qs.forEach((q, i) => {
       const d = document.createElement('div'); d.className = 'q'; const p = document.createElement('p'); p.textContent = `${i + 1}. ${q.q}`; d.appendChild(p);
-      q.options.forEach((o, k) => { const b = document.createElement('button'); b.className = 'btn opt'; b.textContent = o; b.onclick = () => { d.querySelectorAll('button').forEach(x => (x.disabled = true)); const ok = k === q.answer; b.classList.add(ok ? 'ok' : 'no'); if (!ok) d.querySelectorAll('button')[q.answer].classList.add('ok'); done++; if (ok) right++; if (done === qs.length) $('#score').innerHTML = `<b>Score: ${right} / ${qs.length}</b>`; }; d.appendChild(b); });
+      q.options.forEach((o, k) => { const b = document.createElement('button'); b.className = 'btn opt'; b.textContent = o; b.onclick = () => { d.querySelectorAll('button').forEach(x => (x.disabled = true)); const ok = k === q.answer; b.classList.add(ok ? 'ok' : 'no'); if (!ok) d.querySelectorAll('button')[q.answer].classList.add('ok'); const explanation = document.createElement('p'); explanation.className = 'mute'; explanation.textContent = (ok ? 'Correct. ' : 'Not quite. ') + (q.explanation || 'The correct answer is ' + q.options[q.answer] + '.'); d.appendChild(explanation); done++; if (ok) right++; if (done === qs.length) $('#score').innerHTML = `<b>Score: ${right} / ${qs.length}</b>`; }; d.appendChild(b); });
       out.querySelector('#qs').appendChild(d);
     });
   }
