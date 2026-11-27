@@ -107,12 +107,15 @@ if (!allScriptCode.includes("Qwen2.5-1.5B-Instruct-q4f32_1-MLC")) {
 if (!/max_tokens\s*:/.test(allScriptCode) || !allScriptCode.includes("448") || !allScriptCode.includes("384")) {
   throw new Error("The Qwen generation-token budgets for detailed analysis and normal replies are missing from the build.");
 }
-for (const taskPrompt of ["in-depth analytical breakdown", "revision notes", "understanding-focused", "Dictionary or other reference material"]) {
+for (const taskPrompt of ["in-depth analytical breakdown", "revision notes", "understanding-focused", "Dictionary or other reference material", "structured website overview", "meaningful keywords and themes", "Compare the two supplied webpages in depth"]) {
   if (!allScriptCode.includes(taskPrompt)) throw new Error("A required local AI analysis prompt is missing: " + taskPrompt);
 }
 if (!allScriptCode.includes("oracle:ai:request") || !allScriptCode.includes("oracle:ai:offscreen") ||
     !allScriptCode.includes("OFFSCREEN_DOCUMENT") || !allScriptCode.includes("Waiting for local model setup")) {
   throw new Error("The shared offscreen local AI request bridge or hidden runtime handler is missing.");
+}
+if (!allScriptCode.includes("runSerial") || !allScriptCode.includes("secondaryPage")) {
+  throw new Error("Shared AI inference must be serialized and support two-page comparison context.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
