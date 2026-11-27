@@ -1,3 +1,9 @@
+# ORACLE 1.5.0
+
+- Added Cross-tab Research: select up to five open webpages, ask a research question, and receive a local Qwen synthesis of consensus, disagreements, evidence quality and source-specific findings with [S1]–style citations and clickable source references.
+- Added partial-read handling, duplicate-page detection, source links and Knowledge Vault report saving for multi-page research.
+- Redesigned the in-page selected-text ORACLE orb with a polished purple-glass finish and a restrained hover response.
+
 # ORACLE 1.4.2
 
 - Removed the electric orb/lightning animations and custom neon chat thinking indicator. Restored the original orb and plain typing dots.
