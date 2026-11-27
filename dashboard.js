@@ -91,7 +91,7 @@
   }
 
   async function renderMode(m) {
-    mode = m; $('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    mode = m; $$('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
     const out = $('#aOut');
     try {
       const doc = A && A.tab === (+$('#tabSel').value || A.tab) ? A.doc : await analyse();
@@ -174,7 +174,7 @@
     }
     return references.join('\n\n');
   }
-  $('[data-t]').forEach(b => b.onclick = async () => {
+  $$('[data-t]').forEach(b => b.onclick = async () => {
     const text = $('#tIn').value.trim(), task = textTasks[b.dataset.t];
     if (!text) { fail($('#tOut'), new Error('Paste text or grab a page selection first.')); return; }
     b.disabled = true; O.orb.set('processing');
