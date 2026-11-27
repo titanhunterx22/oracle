@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.3.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.4.0") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -39,6 +39,10 @@ if (!fullDictionaryScript) throw new Error("The lazy offline dictionary loader w
 const popupPath = manifest.action && manifest.action.default_popup;
 if (!popupPath || !exists(popupPath)) throw new Error("Manifest popup entry is missing from the build: " + popupPath);
 if (!exists("dashboard.html")) throw new Error("Build output is missing the stable dashboard.html runtime URL.");
+if (!exists("ai-offscreen.html")) throw new Error("Build output is missing the shared local AI offscreen document.");
+if (!exists("ai-offscreen.js")) throw new Error("Build output is missing the offscreen local AI message handler.");
+if (!exists("local-ai-bridge.js")) throw new Error("Build output is missing the shared local AI bridge.");
+if (!(manifest.permissions || []).includes("offscreen")) throw new Error("The offscreen permission is required for shared page and dashboard inference.");
 const serviceWorkerPath = manifest.background && manifest.background.service_worker;
 if (!serviceWorkerPath || !exists(serviceWorkerPath)) throw new Error("Manifest service worker is missing from the build: " + serviceWorkerPath);
 const csp = manifest.content_security_policy && manifest.content_security_policy.extension_pages || "";
@@ -50,6 +54,11 @@ if (!dictionaryResources.includes("dictionary-data/*.json.gz") || !dictionaryRes
   throw new Error("Expanded offline dictionary assets are not exposed to content scripts. Emitted resources: " + JSON.stringify(manifest.web_accessible_resources || []));
 }
 const contentScripts = (manifest.content_scripts || []).flatMap(item => item.js || []);
+const bridgeIndex = contentScripts.findIndex(src => path.basename(src).startsWith("local-ai-bridge") && src.endsWith(".js"));
+const pageContentIndex = contentScripts.findIndex(src => path.basename(src).startsWith("content") && src.endsWith(".js"));
+if (bridgeIndex < 0 || pageContentIndex < 0 || bridgeIndex > pageContentIndex) {
+  throw new Error("The shared local AI bridge must be loaded before in-page selection tools.");
+}
 const fullDictionaryIndex = contentScripts.findIndex(src => path.basename(src).startsWith("dictionary-full") && src.endsWith(".js"));
 const engineIndex = contentScripts.findIndex(src => path.basename(src).startsWith("engine") && src.endsWith(".js"));
 if (fullDictionaryIndex < 0 || engineIndex < 0 || fullDictionaryIndex > engineIndex) {
@@ -79,7 +88,12 @@ if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) 
   throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
 }
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.3.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.4.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("local-ai-bridge.js")) throw new Error("Dashboard does not use the shared local AI bridge.");
+const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
+if (!offscreenHtml.includes("webllm-client.entry.js") || !offscreenHtml.includes("local-ai.js") || !offscreenHtml.includes("ai-offscreen.js")) {
+  throw new Error("The hidden AI document is missing the WebLLM client, model adapter or message handler.");
+}
 const scripts = files.filter(file => file.endsWith(".js"));
 if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The bundled WebLLM worker was not emitted into dist/.");
 const scriptBundles = await Promise.all(scripts.map(file => fs.readFile(file, "utf8")));
@@ -90,8 +104,14 @@ if (!allScriptCode.includes("context_window_size") || !allScriptCode.includes("2
 if (!allScriptCode.includes("Qwen2.5-1.5B-Instruct-q4f32_1-MLC")) {
   throw new Error("The Qwen 2.5 1.5B model is missing from the build.");
 }
-if (!/max_tokens\s*:\s*384/.test(allScriptCode)) {
-  throw new Error("The Qwen generation-token budget is missing from the build.");
+if (!/max_tokens\s*:/.test(allScriptCode) || !allScriptCode.includes("448") || !allScriptCode.includes("384")) {
+  throw new Error("The Qwen generation-token budgets for detailed analysis and normal replies are missing from the build.");
+}
+for (const taskPrompt of ["in-depth analytical breakdown", "revision notes", "understanding-focused", "Dictionary or other reference material"]) {
+  if (!allScriptCode.includes(taskPrompt)) throw new Error("A required local AI analysis prompt is missing: " + taskPrompt);
+}
+if (!allScriptCode.includes("oracle:ai:request") || !allScriptCode.includes("OFFSCREEN_DOCUMENT")) {
+  throw new Error("The shared offscreen local AI request bridge is missing.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
@@ -102,7 +122,8 @@ if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
 if (!files.some(file => path.basename(file).startsWith("dictionary-full") && file.endsWith(".js"))) throw new Error("The expanded offline dictionary loader is missing from the package.");
-if (!popup.includes("webllm") && !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The popup does not include the WebLLM bundle.");
+if (!popup.includes("local-ai-bridge.js")) throw new Error("The popup does not use the shared local AI bridge.");
+if (!scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The WebLLM worker bundle is missing from the offscreen runtime.");
 
 // Catch duplicate top-level lexical declarations that previously broke Edge.
 function resolveAsset(src) {
