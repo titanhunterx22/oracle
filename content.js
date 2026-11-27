@@ -186,23 +186,50 @@
       const buttons = [...panel.querySelectorAll('.acts button')];
       buttons.forEach(button => { button.disabled = true; });
       try {
+        if (!O.localAI || typeof O.localAI.askTask !== 'function') throw new Error('The shared local AI bridge is unavailable. Reload ORACLE and try again.');
         const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
-        let result = E.textAction(id, selection, { lang: panel.__lang && panel.__lang.value, userDefs });
-        if (id === 'define' && O.dictionaryFull) {
-          const terms = [...new Set((selection.match(/[\\p{L}][\\p{L}’'\\-]{6,}/gu) || []).map(term => term.toLowerCase()))]
-            .sort((a, b) => b.length - a.length)
-            .slice(0, 8);
-          const expanded = [];
+        const tasks = { explain: 'explain', simplify: 'simple', summarise: 'summarise', define: 'define', keypoints: 'keypoints', revision: 'study', flashcards: 'cards', translate: 'translate' };
+        let reference = '';
+        if (id === 'define') {
+          const terms = [...new Set((selection.match(/[\p{L}][\p{L}’'\-]{5,}/gu) || []).map(term => term.toLowerCase()))]
+            .sort((a, b) => b.length - a.length).slice(0, 5);
+          const definitions = [];
           for (const term of terms) {
-            if (E.defineWord(term, null, userDefs).includes('isn’t in ORACLE’s bundled definition set yet.')) {
+            const own = E.defineWord(term, null, userDefs);
+            if (!own.includes('isn’t in ORACLE’s bundled definition set yet.')) definitions.push(own);
+            else if (O.dictionaryFull) {
               const found = await O.dictionaryFull.lookup(term).catch(() => null);
-              if (found) expanded.push(O.dictionaryFull.format(found));
+              if (found) definitions.push(O.dictionaryFull.format(found));
             }
-            if (expanded.length >= 4) break;
+            if (definitions.length >= 4) break;
           }
-          if (expanded.length) result += '\\n\\n## More offline definitions\\n\\n' + expanded.join('\\n\\n');
+          reference = definitions.join('\n\n');
         }
-        if (typeof result !== 'string' || !result.trim()) throw new Error('The text tool returned an empty result.');
+        show(id, '_Qwen is analysing your selected text…_');
+        let result = await O.localAI.askTask(tasks[id], {
+          question: {
+            explain: 'Explain this selected passage in depth, unpacking its meaning and important concepts.',
+            simple: 'Explain and rewrite this passage in plain, accessible English without losing important meaning.',
+            summarise: 'Write an original summary of this selected passage.',
+            define: 'Identify and explain the important words and phrases in this selection, especially their contextual meanings.',
+            keypoints: 'Explain the key ideas in this selection and why they matter.',
+            revision: 'Turn this selection into detailed revision notes.',
+            flashcards: 'Create understanding-focused flashcards from this selection.',
+            translate: 'Translate this selection naturally into the chosen language.'
+          }[id],
+          selection,
+          reference,
+          language: panel.__lang && panel.__lang.value
+        });
+        if (id === 'flashcards') {
+          try {
+            const clean = result.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+            const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
+            const data = JSON.parse(clean.slice(start, end + 1));
+            if (Array.isArray(data.cards)) result = '## Flashcards\n\n' + data.cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n');
+          } catch (_) { /* Preserve the model response if structured output is imperfect. */ }
+        }
+        if (typeof result !== 'string' || !result.trim()) throw new Error('The local AI returned an empty result.');
         show(id, result);
       } catch (error) {
         const message = error && error.message ? error.message : String(error);
@@ -269,31 +296,62 @@
   function readerSize(s) { if (!reader) return; reader.shadowRoot.querySelector('article').style.fontSize = s + 'px'; }
 
   /* ───────── page commands (palette & messages) ───────── */
-  async function runMode(title, fn) {
+  function formatGeneratedTask(task, raw) {
+    if (task !== 'cards' && task !== 'quiz') return raw;
+    try {
+      const clean = String(raw || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+      const first = clean.indexOf('{'), last = clean.lastIndexOf('}');
+      if (first < 0 || last <= first) return raw;
+      const data = JSON.parse(clean.slice(first, last + 1));
+      if (task === 'cards' && Array.isArray(data.cards)) {
+        const cards = data.cards.filter(card => card && typeof card.q === 'string' && typeof card.a === 'string');
+        return cards.length ? '## Flashcards\n\n' + cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n') : raw;
+      }
+      if (task === 'quiz' && Array.isArray(data.questions)) {
+        const questions = data.questions.filter(q => q && typeof q.q === 'string' && Array.isArray(q.options) && q.options.length === 4 && q.options.every(option => typeof option === 'string') && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4);
+        return questions.length ? '## Quiz\n\n' + questions.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n') : raw;
+      }
+    } catch (_) { /* Keep raw model output when structured output is imperfect. */ }
+    return raw;
+  }
+  async function runMode(title, taskOrFn, question) {
     ui(); const p = openPanel({ title, markdown: '' });
-    p.show(title, '_Analysing this page locally…_');
-    await new Promise(r => setTimeout(r, 120));
-    try { p.show(title, fn(extract())); } catch (e) { p.show(title, '**Couldn’t analyse this page.** ' + e.message); }
+    p.show(title, '_Reading the page with local Qwen…_');
+    await new Promise(r => setTimeout(r, 80));
+    try {
+      const doc = extract();
+      const generated = typeof taskOrFn === 'function'
+        ? taskOrFn(doc)
+        : await O.localAI.askTask(taskOrFn, { page: doc, question: question || title });
+      p.show(title, typeof taskOrFn === 'function' ? generated : formatGeneratedTask(taskOrFn, generated));
+    } catch (e) { p.show(title, '**Couldn’t analyse this page.** ' + (e && e.message ? e.message : String(e))); }
   }
   function commands() {
-    const M = E.modes;
     return [
-      { title: 'Quick summary', hint: 'this page', run: () => runMode('Quick summary', M.quick) },
-      { title: 'Detailed summary', hint: 'this page', run: () => runMode('Detailed summary', M.detailed) },
-      { title: 'Key points', hint: 'this page', run: () => runMode('Key points', M.keypoints) },
-      { title: 'Explain simply', hint: 'this page', run: () => runMode('Explain simply', M.simple) },
-      { title: 'Study mode: revision notes', hint: 'this page', run: () => runMode('Revision notes', M.study) },
-      { title: 'Fact extraction', hint: 'dates, figures, names', run: () => runMode('Fact extraction', M.facts) },
-      { title: 'Flashcards', hint: 'from this page', run: () => runMode('Flashcards', d => E.cardsText(E.flashcards(d))) },
-      { title: 'Quiz', hint: 'from this page', run: () => runMode('Quiz', d => E.quizText(E.quiz(d))) },
-      { title: 'Page overview', hint: 'domain, headings, links', run: () => runMode('Overview', E.overview) },
+      { title: 'Quick summary', hint: 'AI analysis of this page', run: () => runMode('Quick summary', 'quick', 'Summarise this page and explain its central message and key supporting ideas.') },
+      { title: 'Detailed analysis', hint: 'in-depth reasoning', run: () => runMode('Detailed analysis', 'detailed', 'Give me an in-depth analysis of this page, including its argument, evidence, implications and limitations.') },
+      { title: 'Key points', hint: 'AI explanation of the main ideas', run: () => runMode('Key points', 'keypoints') },
+      { title: 'Explain simply', hint: 'AI teaching mode', run: () => runMode('Explain simply', 'simple') },
+      { title: 'Study mode: revision notes', hint: 'AI-generated study notes', run: () => runMode('Revision notes', 'study') },
+      { title: 'Fact extraction', hint: 'AI analysis of claims and evidence', run: () => runMode('Fact extraction', 'facts') },
+      { title: 'Flashcards', hint: 'AI-generated revision cards', run: () => runMode('Flashcards', 'cards') },
+      { title: 'Quiz', hint: 'AI-generated understanding test', run: () => runMode('Quiz', 'quiz') },
+      { title: 'Page overview', hint: 'AI analysis of purpose and main ideas', run: () => runMode('Overview', 'overview', 'Explain this page’s purpose, audience and key ideas.') },
+      { title: 'Find key themes and keywords', hint: 'AI topic analysis', run: () => runMode('Key themes', 'keywords') },
       { title: 'Reading statistics', hint: 'time, difficulty', run: () => runMode('Reading statistics', E.readingStatsText) },
       { title: 'List headings', hint: 'outline', run: () => runMode('Outline', E.headingsText) },
       { title: 'List links', hint: 'on this page', run: () => runMode('Links', d => E.linksText(d)) },
       { title: 'Reading mode', hint: 'distraction-free', run: () => openReader().catch(e => runMode('Reading mode', () => e.message)) },
       { title: 'Highlight important passages', hint: 'toggle', run: () => { const n = highlight(!document.querySelector('mark.oracle-hl')).count; if (!n) closePanel(); } },
       { title: 'Find in page…', hint: 'highlight matches', run: () => { const t = prompt('Find in this page:'); if (t) { const r = find(t); runMode('Find', () => r.count ? `**${r.count}** match${r.count > 1 ? 'es' : ''} highlighted for “${t}”.` : `No matches for “${t}”.`); } } },
-      { title: 'Save this page to Vault', hint: 'quick summary', run: async () => { const d = extract(); await O.store.addVault({ type: 'summary', title: d.title, text: O.plain(M.quick(d)), url: d.url }); runMode('Saved', () => 'Saved a quick summary of this page to your Knowledge Vault.'); } },
+      { title: 'Save this page to Vault', hint: 'AI-written summary', run: async () => {
+        const d = extract(), p = openPanel({ title: 'Save to Knowledge Vault', markdown: '_Qwen is writing a summary…_' });
+        try {
+          const summary = await O.localAI.askTask('quick', { page: d, question: 'Write a clear, useful summary of this page for my Knowledge Vault.' });
+          await O.store.addVault({ type: 'summary', title: d.title, text: O.plain(summary), url: d.url });
+          p.show('Saved', 'Saved an AI-written summary of this page to your Knowledge Vault.');
+        } catch (e) { p.show('Could not save', '**AI summary failed.** ' + (e && e.message ? e.message : String(e))); }
+      } },
       { title: 'Clear highlights', hint: 'find & important', run: () => { clearFind(); highlight(false); } },
       { title: 'Open ORACLE dashboard', hint: 'full view', run: () => chrome.runtime.sendMessage({ type: 'oracle:openDashboard', hash: '#chat' }) }
     ];

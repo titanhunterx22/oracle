@@ -8,6 +8,62 @@ chrome.commands.onCommand.addListener(async (cmd) => {
   catch (e) { chrome.tabs.create({ url: DASH + '#chat' }); } // browser pages can't run content scripts
 });
 
+let oracleOffscreenCreating = null;
+
+async function ensureOracleOffscreen() {
+  if (!chrome.offscreen || typeof chrome.offscreen.createDocument !== 'function') {
+    throw new Error('This Chromium browser does not support the offscreen document needed for shared local AI. Update Edge to a current version.');
+  }
+  if (typeof chrome.offscreen.hasDocument === 'function' && await chrome.offscreen.hasDocument()) return;
+  if (typeof chrome.runtime.getContexts === 'function') {
+    const url = chrome.runtime.getURL('ai-offscreen.html');
+    const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'], documentUrls: [url] });
+    if (contexts.length) return;
+  }
+  if (oracleOffscreenCreating) return oracleOffscreenCreating;
+  oracleOffscreenCreating = (async () => {
+    try {
+      await chrome.offscreen.createDocument({
+        url: 'ai-offscreen.html',
+        reasons: ['WORKERS', 'LOCAL_STORAGE'],
+        justification: 'Run one shared on-device WebGPU language model for ORACLE chat, page analysis and selected-text tools without opening a visible tab.'
+      });
+    } catch (error) {
+      if (typeof chrome.offscreen.hasDocument === 'function' && await chrome.offscreen.hasDocument()) return;
+      if (typeof chrome.runtime.getContexts === 'function') {
+        const url = chrome.runtime.getURL('ai-offscreen.html');
+        const contexts = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT'], documentUrls: [url] });
+        if (contexts.length) return;
+      }
+      if (/single offscreen|already exists|only one offscreen|only a single/i.test(error && error.message || '')) return;
+      throw error;
+    }
+  })();
+  try { await oracleOffscreenCreating; }
+  finally { oracleOffscreenCreating = null; }
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || msg.type !== 'oracle:ai:request') return false;
+  (async () => {
+    await ensureOracleOffscreen();
+    const response = await chrome.runtime.sendMessage({
+      type: 'oracle:ai:offscreen',
+      action: msg.action,
+      requestId: msg.requestId,
+      question: msg.question,
+      task: msg.task,
+      options: msg.options || {}
+    });
+    if (!response) throw new Error('The shared local AI document did not respond. Reload ORACLE and try again.');
+    return response;
+  })().then(sendResponse).catch(error => sendResponse({
+    ok: false,
+    error: error && error.message ? error.message : String(error)
+  }));
+  return true;
+});
+
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.type === 'oracle:openDashboard') chrome.tabs.create({ url: DASH + (msg.hash || '#chat') });
 });

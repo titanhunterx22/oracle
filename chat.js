@@ -23,18 +23,18 @@
         listTabs: () => O.tools.tabsSummary(),
         async find(term) { const t = await O.tools.targetTab(tabId()); if (!t) throw new Error('No readable tab found.'); const r = await O.tools.send(t.id, { type: 'oracle:find', term }); return r || { count: 0 }; },
         vaultSearch: q => O.store.searchVault(q),
-        async askAI(question, doc, selection) {
-          if (!O.localAI) throw new Error('Local AI is not loaded. Reload the ORACLE extension and try again.');
+        async askAI(question, doc, selection, task, extra) {
+          if (!O.localAI) throw new Error('The shared Local AI bridge did not load. Reload the ORACLE extension and try again.');
           const history = await O.store.conversation();
           if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].text === question) history.pop();
-          // Retrieve only a couple of relevant saved notes. Everything is read from local extension storage.
           const knowledge = await O.store.searchVault(question).catch(() => []);
-          return O.localAI.ask(question, {
+          const options = Object.assign({
             page: doc || null,
             selection: selection || '',
             history,
             knowledge: Array.isArray(knowledge) ? knowledge.slice(0, 2) : []
-          });
+          }, extra || {});
+          return task ? O.localAI.askTask(task, Object.assign(options, { question })) : O.localAI.ask(question, options);
         },
         vaultDefs: async () => (await O.store.vault()).filter(e => e.type === 'definition'),
         async lookupDefinition(word) {
@@ -51,8 +51,9 @@
           const t = await O.tools.targetTab(tabId()); if (!t) throw new Error('No readable tab found.');
           if (kind === 'bookmark') { await O.tools.bookmarkPage(t.id, 'Read later'); return `Bookmarked **${t.title || t.url}** under “Read later”.`; }
           const doc = await env.getPage();
-          await O.store.addVault({ type: 'summary', title: doc.title, text: O.plain(O.engine.modes.quick(doc)), url: doc.url });
-          return `Saved a quick summary of **${doc.title}** to your Knowledge Vault.`;
+          const summary = await env.askAI('Create a useful summary of this page for my Knowledge Vault.', doc, '', 'quick');
+          await O.store.addVault({ type: 'summary', title: doc.title, text: O.plain(summary), url: doc.url });
+          return `Saved an AI-written summary of **${doc.title}** to your Knowledge Vault.`;
         }
       };
 
@@ -68,7 +69,7 @@
         const el = document.createElement('div'); el.className = 'msg ' + role + (err ? ' err' : '');
         const body = document.createElement('div'); body.className = 'md'; el.appendChild(body);
         const meta = document.createElement('div'); meta.className = 'meta'; meta.innerHTML = `<time>${hhmm(ts)}</time>`;
-        if (role === 'bot') { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = async () => { try { await navigator.clipboard.writeText(O.plain(text)); c.textContent = 'Copied'; } catch (x) { c.textContent = 'Blocked'; } setTimeout(() => (c.textContent = 'Copy'), 1300); }; meta.appendChild(c); }
+        if (role === 'bot') { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = async () => { try { await navigator.clipboard.writeText(O.plain(text || body.innerText)); c.textContent = 'Copied'; } catch (x) { c.textContent = 'Blocked'; } setTimeout(() => (c.textContent = 'Copy'), 1300); }; meta.appendChild(c); }
         el.appendChild(meta); log.appendChild(el);
         if (role === 'user') body.textContent = text; else body.innerHTML = O.md(text);
         scroll(); return { el, body };
@@ -83,6 +84,24 @@
         body.textContent = '';
         for (let i = 0; i < plain.length; i += step) { body.textContent = plain.slice(0, i + step); scroll(); await sleep(14); }
         body.innerHTML = O.md(text); scroll();
+      }
+      function formatStructuredReply(task, raw) {
+        if (task !== 'cards' && task !== 'quiz') return raw;
+        try {
+          const source = String(raw || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+          const first = source.indexOf('{'), last = source.lastIndexOf('}');
+          if (first < 0 || last <= first) return raw;
+          const data = JSON.parse(source.slice(first, last + 1));
+          if (task === 'cards' && Array.isArray(data.cards)) {
+            const cards = data.cards.filter(card => card && typeof card.q === 'string' && typeof card.a === 'string');
+            return cards.length ? '## Flashcards\n\n' + cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n') : raw;
+          }
+          if (task === 'quiz' && Array.isArray(data.questions)) {
+            const questions = data.questions.filter(q => q && typeof q.q === 'string' && Array.isArray(q.options) && q.options.length === 4 && q.options.every(option => typeof option === 'string') && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4);
+            return questions.length ? '## Quiz\n\n' + questions.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n') : raw;
+          }
+        } catch (_) { /* Keep the original response if structured output is imperfect. */ }
+        return raw;
       }
 
       /* history */
@@ -113,16 +132,49 @@
           let res;
           try {
             const intent = O.engine.detect(text.toLowerCase()).id;
-            const useLocalAI = intent === 'none' || intent === 'explain';
-            if (useLocalAI && O.localAI) {
-              let doc = null, selection = '';
-              if (/\b(selected|selection|highlight)\b/i.test(text)) {
-                selection = await env.getSelection().catch(() => '');
-              } else if (/\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text)) {
-                doc = await env.getPage().catch(() => null);
+            const aiTasks = {
+              summarize: 'quick',
+              summarize_detailed: 'detailed',
+              keypoints: 'keypoints',
+              simplify: 'simple',
+              study: 'study',
+              facts: 'facts',
+              flashcards: 'cards',
+              quiz: 'quiz',
+              define: 'define',
+              explain: 'explain',
+              overview: 'overview',
+              keywords: 'keywords'
+            };
+            const task = aiTasks[intent];
+            if (task || intent === 'none') {
+              if (!O.localAI || typeof O.localAI.askTask !== 'function') {
+                throw new Error('Local Qwen is not available. Open Dashboard → Settings → Local AI reasoning, prepare the model, then reload ORACLE.');
               }
-              const answer = await env.askAI(text, doc, selection);
-              res = { text: answer, state: 'responding', intent: 'local-ai', suggestions: O.engine.SUG.default };
+              let doc = null, selection = '', extra = {};
+              const asksForSelection = /\b(selected|selection|highlight)\b/i.test(text);
+              const asksAboutPage = /\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text);
+              const pageTask = ['quick', 'detailed', 'keypoints', 'study', 'facts', 'cards', 'quiz', 'overview', 'keywords'].includes(task);
+              if (asksForSelection) selection = await env.getSelection();
+              else if (pageTask || asksAboutPage) doc = await env.getPage();
+              else if (['simple', 'explain', 'keypoints'].includes(task) && ctx.last && /\b(that|this|it|previous|last|above|again)\b/i.test(text)) selection = O.plain(ctx.last).slice(0, 3200);
+
+              if (task === 'define') {
+                const found = text.match(/(?:define|definition of|meaning of|what does)\s+["“'‘]?([\p{L}][\p{L}'’\-]{0,59})/iu);
+                const word = found ? found[1].toLowerCase() : '';
+                if (word) {
+                  const userDefs = await env.vaultDefs();
+                  let reference = '';
+                  if (O.dictionaryFull) {
+                    const entry = await O.dictionaryFull.lookup(word).catch(() => null);
+                    if (entry) reference = O.dictionaryFull.format(entry);
+                  }
+                  if (!reference) reference = O.engine.defineWord(word, doc, userDefs);
+                  extra.reference = reference;
+                }
+              }
+              const answer = await env.askAI(text, doc, selection, task, extra);
+              res = { text: answer, state: 'responding', intent: 'local-ai', aiTask: task, suggestions: O.engine.SUG.default };
             } else {
               res = await O.engine.handle(text, env, ctx);
             }
@@ -145,11 +197,12 @@
 
           const answerText = res && typeof res.text === 'string' ? res.text : 'The assistant returned no response. Please try again.';
           const err = !res || res.state === 'error';
+          const displayText = err ? answerText : formatStructuredReply(res && res.aiTask, answerText);
           O.orb.set(err ? 'error' : 'responding', err ? 1800 : 0);
           const b = bubble('bot', '', Date.now(), err);
-          await typeIn(b.body, answerText);
-          await O.store.pushMessage({ role: 'bot', text: answerText, ts: Date.now(), err });
-          ctx.last = answerText;
+          await typeIn(b.body, displayText);
+          await O.store.pushMessage({ role: 'bot', text: displayText, ts: Date.now(), err });
+          ctx.last = displayText;
           setChips(res && res.suggestions);
           if (!err) O.orb.set('idle');
         } catch (e) {

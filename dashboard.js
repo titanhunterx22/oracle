@@ -79,30 +79,67 @@
     const items = [['Title', clipS(d.title, 46)], ['Domain', d.domain], ['Words', rs.words.toLocaleString()], ['Reading time', rs.minutes + ' min'], ['Difficulty', rs.label + (rs.grade != null ? ` · grade ${rs.grade}` : '')], ['Headings', d.blocks.filter(b => b.t[0] === 'h').length], ['Links', `${d.links.length} (${ext} external)`], ['Main subject', kw || '—']];
     $('#stats').innerHTML = ''; items.forEach(([k, v], i) => { const s = document.createElement('div'); s.className = 'stat'; s.style.animationDelay = i * 40 + 'ms'; s.innerHTML = '<b></b><span></span>'; s.firstChild.textContent = v; s.lastChild.textContent = k; $('#stats').appendChild(s); });
   }
+  function parseGeneratedJSON(raw, key) {
+    const source = String(raw || '').replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+    const first = source.indexOf('{'), last = source.lastIndexOf('}');
+    if (first < 0 || last <= first) return null;
+    try {
+      const value = JSON.parse(source.slice(first, last + 1));
+      const items = value && value[key];
+      return Array.isArray(items) ? items : null;
+    } catch (_) { return null; }
+  }
+
   async function renderMode(m) {
     mode = m; $$('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
     const out = $('#aOut');
     try {
       const doc = A && A.tab === (+$('#tabSel').value || A.tab) ? A.doc : await analyse();
-      O.orb.set('responding', 700);
-      if (m === 'cards') return renderCards(out, doc);
-      if (m === 'quiz') return renderQuiz(out, doc);
-      setOut(out, E.modes[m](doc));
+      O.orb.set('analysing');
+      setOut(out, '_Qwen is reading the page and preparing an analysis…_');
+      const questions = {
+        quick: 'Give me a useful overview of this page, including its central message and the most important supporting ideas.',
+        detailed: 'Give me a genuinely in-depth analysis of this page, explaining the ideas, evidence, relationships, implications and limitations.',
+        keypoints: 'Identify and explain the most important points from this page and why each matters.',
+        simple: 'Teach me the content of this page in clear, accessible language, explaining technical terms and difficult ideas.',
+        study: 'Turn this page into detailed, well-organised revision notes that help me understand and remember it.',
+        facts: 'Analyse this page and extract its important facts, figures, names, dates, claims and supporting evidence. Separate facts from interpretation.',
+        cards: 'Create useful flashcards from this page that test genuine understanding.',
+        quiz: 'Create a multiple-choice quiz from this page, with plausible distractors, correct answers and explanations.'
+      };
+      const generated = await O.localAI.askTask(m, { page: doc, question: questions[m] || 'Analyse this page.' });
+      if (m === 'cards') {
+        const cards = parseGeneratedJSON(generated, 'cards');
+        if (cards && cards.length) return renderCards(out, cards.filter(c => c && typeof c.q === 'string' && typeof c.a === 'string').slice(0, 10));
+      }
+      if (m === 'quiz') {
+        const questions = parseGeneratedJSON(generated, 'questions');
+        const valid = (questions || []).filter(q =>
+          q && typeof q.q === 'string' && Array.isArray(q.options) && q.options.length === 4 &&
+          q.options.every(option => typeof option === 'string') &&
+          Number.isInteger(q.answer) && q.answer >= 0 && q.answer <= 3
+        ).slice(0, 8);
+        if (valid.length) return renderQuiz(out, valid);
+      }
+      setOut(out, generated);
     } catch (e) { fail(out, e); }
+    finally { O.orb.set('idle'); }
   }
-  function renderCards(out, doc) {
-    const cards = E.flashcards(doc); out._raw = E.cardsText(cards);
-    if (!cards.length) { out.innerHTML = O.md(out._raw); return; }
+  function renderCards(out, cards) {
+    cards = Array.isArray(cards) ? cards : [];
+    out._raw = '## Flashcards\n\n' + cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n');
+    if (!cards.length) { out.innerHTML = O.md('No flashcards were generated. Please try again.'); return; }
     out.innerHTML = '<p class="mute">Click a card to flip it.</p><div class="fcgrid"></div>';
     cards.forEach(c => { const f = document.createElement('div'); f.className = 'fc'; f.tabIndex = 0; f.innerHTML = '<div><small class="mute"></small><p></p></div>'; const lab = f.querySelector('small'), p = f.querySelector('p'); lab.textContent = 'Question'; p.textContent = c.q; const flip = () => { const on = f.classList.toggle('flip'); lab.textContent = on ? 'Answer' : 'Question'; p.textContent = on ? c.a : c.q; }; f.onclick = flip; f.onkeydown = ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); flip(); } }; out.querySelector('.fcgrid').appendChild(f); });
   }
-  function renderQuiz(out, doc) {
-    const qs = E.quiz(doc); out._raw = E.quizText(qs);
-    if (!qs.length) { out.innerHTML = O.md(out._raw); return; }
-    out.innerHTML = '<p class="mute">Fill in the blank. Pick an answer.</p><div id="qs"></div><p id="score"></p>'; let done = 0, right = 0;
+  function renderQuiz(out, qs) {
+    qs = Array.isArray(qs) ? qs : [];
+    out._raw = '## Quiz\n\n' + qs.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n');
+    if (!qs.length) { out.innerHTML = O.md('No quiz questions were generated. Please try again.'); return; }
+    out.innerHTML = '<p class="mute">Choose an answer. ORACLE explains it after you select.</p><div id="qs"></div><p id="score"></p>'; let done = 0, right = 0;
     qs.forEach((q, i) => {
       const d = document.createElement('div'); d.className = 'q'; const p = document.createElement('p'); p.textContent = `${i + 1}. ${q.q}`; d.appendChild(p);
-      q.options.forEach((o, k) => { const b = document.createElement('button'); b.className = 'btn opt'; b.textContent = o; b.onclick = () => { d.querySelectorAll('button').forEach(x => (x.disabled = true)); const ok = k === q.answer; b.classList.add(ok ? 'ok' : 'no'); if (!ok) d.querySelectorAll('button')[q.answer].classList.add('ok'); done++; if (ok) right++; if (done === qs.length) $('#score').innerHTML = `<b>Score: ${right} / ${qs.length}</b>`; }; d.appendChild(b); });
+      q.options.forEach((o, k) => { const b = document.createElement('button'); b.className = 'btn opt'; b.textContent = o; b.onclick = () => { d.querySelectorAll('button').forEach(x => (x.disabled = true)); const ok = k === q.answer; b.classList.add(ok ? 'ok' : 'no'); if (!ok) d.querySelectorAll('button')[q.answer].classList.add('ok'); const explanation = document.createElement('p'); explanation.className = 'mute'; explanation.textContent = (ok ? 'Correct. ' : 'Not quite. ') + (q.explanation || 'The correct answer is ' + q.options[q.answer] + '.'); d.appendChild(explanation); done++; if (ok) right++; if (done === qs.length) $('#score').innerHTML = `<b>Score: ${right} / ${qs.length}</b>`; }; d.appendChild(b); });
       out.querySelector('#qs').appendChild(d);
     });
   }
@@ -111,29 +148,92 @@
 
   /* ───── text assistant ───── */
   $('#grab').onclick = async () => { try { const t = await needTab(); const s = await T.selection(t.id); if (!s) throw new Error('Nothing is selected on that page. Highlight some text there first.'); $('#tIn').value = s; toast('Selection copied in'); } catch (e) { fail($('#tOut'), e); } };
+  const textTasks = {
+    explain: 'explain',
+    simplify: 'simple',
+    summarise: 'summarise',
+    define: 'define',
+    keypoints: 'keypoints',
+    revision: 'study',
+    flashcards: 'cards',
+    translate: 'translate'
+  };
+  async function dictionaryContextFor(text, userDefs) {
+    const terms = [...new Set((String(text || '').match(/[\p{L}][\p{L}’'\-]{5,}/gu) || []).map(x => x.toLowerCase()))]
+      .sort((a, b) => b.length - a.length).slice(0, 5);
+    const references = [];
+    for (const word of terms) {
+      const own = E.defineWord(word, null, userDefs);
+      if (!own.includes('isn’t in ORACLE’s bundled definition set yet.')) {
+        references.push(own);
+      } else if (O.dictionaryFull) {
+        const item = await O.dictionaryFull.lookup(word).catch(() => null);
+        if (item) references.push(O.dictionaryFull.format(item));
+      }
+      if (references.length >= 4) break;
+    }
+    return references.join('\n\n');
+  }
   $$('[data-t]').forEach(b => b.onclick = async () => {
-    const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
-    O.orb.set('processing', 600); setOut($('#tOut'), E.textAction(b.dataset.t, $('#tIn').value, { lang: $('#tLang').value, userDefs }));
+    const text = $('#tIn').value.trim(), task = textTasks[b.dataset.t];
+    if (!text) { fail($('#tOut'), new Error('Paste text or grab a page selection first.')); return; }
+    b.disabled = true; O.orb.set('processing');
+    setOut($('#tOut'), '_Qwen is working on your text…_');
+    try {
+      const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
+      const reference = task === 'define' ? await dictionaryContextFor(text, userDefs) : '';
+      const answer = await O.localAI.askTask(task, {
+        question: {
+          explain: 'Explain this passage in depth and clarify its important ideas.',
+          simple: 'Rewrite and explain this passage in plain, accessible language.',
+          summarise: 'Summarise this passage without losing its important meaning.',
+          define: 'Identify and explain the important vocabulary in this passage, especially how each term is used here.',
+          keypoints: 'Extract and explain the key ideas and why they matter.',
+          study: 'Create detailed revision notes from this passage.',
+          cards: 'Create understanding-focused flashcards from this passage.',
+          translate: 'Translate this passage naturally and accurately.'
+        }[task],
+        selection: text,
+        reference,
+        language: $('#tLang').value
+      });
+      if (task === 'cards') {
+        const cards = parseGeneratedJSON(answer, 'cards');
+        const valid = (cards || []).filter(card => card && typeof card.q === 'string' && typeof card.a === 'string').slice(0, 10);
+        if (valid.length) { renderCards($('#tOut'), valid); return; }
+      }
+      setOut($('#tOut'), answer);
+    } catch (error) { fail($('#tOut'), error); }
+    finally { b.disabled = false; O.orb.set('idle'); }
   });
   /* ───── offline dictionary ───── */
   const dictLookup = async () => {
     const word = $('#dictWord').value.trim();
     if (!word) { setOut($('#dictOut'), 'Enter a word to look up.'); $('#dictWord').focus(); return; }
+    $('#dictLookup').disabled = true;
     try {
       const userDefs = (await O.store.vault()).filter(e => e.type === 'definition');
       const curated = E.defineWord(word, null, userDefs);
-      if (!curated.includes('isn’t in ORACLE’s bundled definition set yet.')) {
-        setOut($('#dictOut'), curated);
-        return;
+      let dictionaryEntry = curated;
+      if (curated.includes('isn’t in ORACLE’s bundled definition set yet.')) {
+        setOut($('#dictOut'), '**Looking through the expanded offline dictionary…**');
+        const full = O.dictionaryFull ? await O.dictionaryFull.lookup(word).catch(error => {
+          throw new Error('The expanded offline dictionary could not be opened: ' + error.message);
+        }) : null;
+        if (full) dictionaryEntry = O.dictionaryFull.format(full);
       }
-      setOut($('#dictOut'), '**Looking through the expanded offline dictionary…**');
-      const full = O.dictionaryFull ? await O.dictionaryFull.lookup(word).catch(error => {
-        throw new Error('The expanded offline dictionary could not be opened: ' + error.message);
-      }) : null;
-      setOut($('#dictOut'), full
-        ? O.dictionaryFull.format(full)
-        : curated);
+      setOut($('#dictOut'), '_Qwen is preparing a clear explanation using ORACLE’s dictionary data…_');
+      try {
+        const explanation = await O.localAI.askTask('define', {
+          question: 'Explain the word “' + word + '” clearly and in depth. Cover its different meanings where relevant, part of speech, typical usage, connotations and a natural example.',
+          reference: dictionaryEntry
+        });
+        setOut($('#dictOut'), explanation + '\n\n---\n\n**Offline dictionary reference**\n\n' + dictionaryEntry);
+      } catch (error) {
+        setOut($('#dictOut'), dictionaryEntry + '\n\n> AI explanation unavailable: ' + (error && error.message ? error.message : String(error)));
+      }
     } catch (e) { fail($('#dictOut'), e); }
+    finally { $('#dictLookup').disabled = false; }
   };
   $('#dictLookup').onclick = dictLookup;
   $('#dictWord').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); dictLookup(); } });
@@ -233,15 +333,51 @@
   /* ───── page tools & smart search ───── */
   $$('[data-pt]').forEach(b => b.onclick = async () => {
     const out = $('#ptOut');
-    try { const t = await needTab(); O.orb.set('analysing'); const d = await T.extract(t.id); O.orb.set('idle'); const k = b.dataset.pt; setOut(out, k === 'links' ? E.linksText(d, 300) : k === 'keywords' ? E.keywordsText(d) : k === 'stats' ? E.readingStatsText(d) : k === 'headings' ? E.headingsText(d) : E.overview(d)); }
-    catch (e) { fail(out, e); }
+    try {
+      const t = await needTab();
+      const k = b.dataset.pt;
+      const d = await T.extract(t.id);
+      if (k === 'overview' || k === 'keywords') {
+        O.orb.set('analysing');
+        setOut(out, k === 'overview'
+          ? '_Qwen is examining the purpose, audience and main ideas of this website…_'
+          : '_Qwen is identifying the central topics and themes…_');
+        const result = await O.localAI.askTask(k, {
+          page: d,
+          question: k === 'overview'
+            ? 'Give me a useful, structured overview of this website and explain what the page is trying to communicate.'
+            : 'Find the most important subject keywords and themes in this page. Explain each briefly and group related ideas.'
+        });
+        setOut(out, result);
+      } else {
+        setOut(out, k === 'links' ? E.linksText(d, 300) : k === 'stats' ? E.readingStatsText(d) : E.headingsText(d));
+      }
+    } catch (e) { fail(out, e); }
+    finally { O.orb.set('idle'); }
   });
   const fCnt = r => { $('#fCnt').textContent = r && r.count ? `${r.index + 1} / ${r.count}` : 'No matches'; };
   const doFind = async () => { try { const t = await needTab(); const r = await T.send(t.id, { type: 'oracle:find', term: $('#fQ').value }); fCnt(r); if (r.count) await T.switchTo(t); } catch (e) { $('#fCnt').textContent = e.message; } };
   $('#fGo').onclick = doFind; $('#fQ').addEventListener('keydown', e => { if (e.key === 'Enter') doFind(); });
   for (const [id, dir] of [['#fPrev', -1], ['#fNext', 1]]) $(id).onclick = async () => { try { const t = await needTab(); fCnt(await T.send(t.id, { type: 'oracle:findStep', dir })); await T.switchTo(t); } catch (e) { $('#fCnt').textContent = e.message; } };
   $('#fClr').onclick = async () => { try { const t = await needTab(); await T.send(t.id, { type: 'oracle:findClear' }); $('#fCnt').textContent = ''; } catch (e) { $('#fCnt').textContent = e.message; } };
-  $('#cmpGo').onclick = async () => { const out = $('#cmpOut'); try { O.orb.set('analysing'); setOut(out, await T.compare(+$('#cmpA').value, +$('#cmpB').value)); O.orb.set('idle'); } catch (e) { fail(out, e); } };
+  $('#cmpGo').onclick = async () => {
+    const out = $('#cmpOut');
+    try {
+      const idA = +$('#cmpA').value, idB = +$('#cmpB').value;
+      if (!idA || !idB) throw new Error('Choose two open web pages to compare.');
+      if (idA === idB) throw new Error('Pick two different tabs.');
+      O.orb.set('analysing');
+      setOut(out, '_Qwen is comparing both pages and examining their similarities and differences…_');
+      const [a, b] = await Promise.all([T.extract(idA), T.extract(idB)]);
+      const result = await O.localAI.askTask('compare', {
+        page: a,
+        secondaryPage: b,
+        question: 'Compare these two webpages in depth. Explain what they agree on, where they differ, how their evidence and reasoning compare, and what a reader should take away.'
+      });
+      setOut(out, result);
+    } catch (e) { fail(out, e); }
+    finally { O.orb.set('idle'); }
+  };
 
   /* ───── settings ───── */
   $('#sPart').checked = st.particles; $('#sType').checked = st.typing; $('#sCalm').checked = st.reduceMotion;
@@ -263,7 +399,7 @@
         const label = detail || (percent >= 100 ? 'Finishing model setup' : 'Preparing local model');
         aiStatus.textContent = percent >= 100 ? (label + ' (finalising…)') : (label + ' · ' + percent + '%');
       });
-      aiStatus.textContent = 'Local AI is ready. Ask ORACLE an open-ended question in Chat.';
+      aiStatus.textContent = 'Qwen is ready for AI-powered page analysis, chat, definitions and study tools.';
       aiPrepare.textContent = 'Local AI ready';
     } catch (error) {
       aiStatus.textContent = error && error.message ? error.message : String(error);
