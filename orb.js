@@ -4,7 +4,7 @@
   const O = (g.ORACLE = g.ORACLE || {});
   let timer = 0;
   O.orb = {
-    html: (cls) => `<div class="orb ${cls || ''}" data-state="idle" aria-hidden="true"><span class="glow"></span><span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span><span class="wave"></span><span class="wave w2"></span><span class="core"></span><span class="scan"></span></div>`,
+    html: (cls) => `<div class="orb ${cls || ''}" data-state="idle" aria-hidden="true"><span class="glow"></span><span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span><span class="energy"></span><span class="bolt b1"></span><span class="bolt b2"></span><span class="bolt b3"></span><span class="wave"></span><span class="wave w2"></span><span class="core"></span><span class="scan"></span></div>`,
     set(state, holdMs) {
       document.querySelectorAll('.orb').forEach(o => { o.dataset.state = state; });
       document.querySelectorAll('[data-orb-label]').forEach(l => { l.textContent = ({ idle: 'Idle', processing: 'Processing…', analysing: 'Analysing…', responding: 'Responding', error: 'Needs attention' })[state] || state; l.dataset.state = state; });
