@@ -121,17 +121,12 @@
           bubble('user', text, ts);
           await O.store.pushMessage({ role: 'user', text, ts });
           pending = document.createElement('div');
-          pending.className = 'msg bot thinking';
-          pending.setAttribute('role', 'status');
-          pending.setAttribute('aria-live', 'polite');
-          pending.innerHTML = '<span class="thinking-bolt" aria-hidden="true">ϟ</span><span class="thinking-label">THINKING</span><span class="typing" aria-hidden="true"><i></i><i></i><i></i></span>';
+          pending.className = 'msg bot';
+          pending.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
           log.appendChild(pending);
           scroll();
 
           const pageish = /summar|point|simpl|note|date|fact|flash|quiz|overview|link|heading|keyword|stat|read|explain|compare|find|save|study|what|who|when|how/i.test(text);
-          pending.dataset.mode = pageish ? 'analysing' : 'thinking';
-          const thinkingLabel = pending.querySelector('.thinking-label');
-          if (thinkingLabel) thinkingLabel.textContent = pageish ? 'ANALYSING PAGE' : 'THINKING';
           O.orb.set(pageish ? 'analysing' : 'processing');
           const t0 = Date.now();
           let res;
