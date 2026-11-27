@@ -296,16 +296,34 @@
   function readerSize(s) { if (!reader) return; reader.shadowRoot.querySelector('article').style.fontSize = s + 'px'; }
 
   /* ───────── page commands (palette & messages) ───────── */
+  function formatGeneratedTask(task, raw) {
+    if (task !== 'cards' && task !== 'quiz') return raw;
+    try {
+      const clean = String(raw || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+      const first = clean.indexOf('{'), last = clean.lastIndexOf('}');
+      if (first < 0 || last <= first) return raw;
+      const data = JSON.parse(clean.slice(first, last + 1));
+      if (task === 'cards' && Array.isArray(data.cards)) {
+        const cards = data.cards.filter(card => card && typeof card.q === 'string' && typeof card.a === 'string');
+        return cards.length ? '## Flashcards\n\n' + cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n') : raw;
+      }
+      if (task === 'quiz' && Array.isArray(data.questions)) {
+        const questions = data.questions.filter(q => q && typeof q.q === 'string' && Array.isArray(q.options) && q.options.length === 4 && q.options.every(option => typeof option === 'string') && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4);
+        return questions.length ? '## Quiz\n\n' + questions.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n') : raw;
+      }
+    } catch (_) { /* Keep raw model output when structured output is imperfect. */ }
+    return raw;
+  }
   async function runMode(title, taskOrFn, question) {
     ui(); const p = openPanel({ title, markdown: '' });
     p.show(title, '_Reading the page with local Qwen…_');
     await new Promise(r => setTimeout(r, 80));
     try {
       const doc = extract();
-      const result = typeof taskOrFn === 'function'
+      const generated = typeof taskOrFn === 'function'
         ? taskOrFn(doc)
         : await O.localAI.askTask(taskOrFn, { page: doc, question: question || title });
-      p.show(title, result);
+      p.show(title, typeof taskOrFn === 'function' ? generated : formatGeneratedTask(taskOrFn, generated));
     } catch (e) { p.show(title, '**Couldn’t analyse this page.** ' + (e && e.message ? e.message : String(e))); }
   }
   function commands() {
@@ -318,7 +336,8 @@
       { title: 'Fact extraction', hint: 'AI analysis of claims and evidence', run: () => runMode('Fact extraction', 'facts') },
       { title: 'Flashcards', hint: 'AI-generated revision cards', run: () => runMode('Flashcards', 'cards') },
       { title: 'Quiz', hint: 'AI-generated understanding test', run: () => runMode('Quiz', 'quiz') },
-      { title: 'Page overview', hint: 'domain, headings, links', run: () => runMode('Overview', E.overview) },
+      { title: 'Page overview', hint: 'AI analysis of purpose and main ideas', run: () => runMode('Overview', 'overview', 'Explain this page’s purpose, audience and key ideas.') },
+      { title: 'Find key themes and keywords', hint: 'AI topic analysis', run: () => runMode('Key themes', 'keywords') },
       { title: 'Reading statistics', hint: 'time, difficulty', run: () => runMode('Reading statistics', E.readingStatsText) },
       { title: 'List headings', hint: 'outline', run: () => runMode('Outline', E.headingsText) },
       { title: 'List links', hint: 'on this page', run: () => runMode('Links', d => E.linksText(d)) },
