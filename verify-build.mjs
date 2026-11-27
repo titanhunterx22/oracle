@@ -40,7 +40,7 @@ const popupPath = manifest.action && manifest.action.default_popup;
 if (!popupPath || !exists(popupPath)) throw new Error("Manifest popup entry is missing from the build: " + popupPath);
 if (!exists("dashboard.html")) throw new Error("Build output is missing the stable dashboard.html runtime URL.");
 if (!exists("ai-offscreen.html")) throw new Error("Build output is missing the shared local AI offscreen document.");
-if (!exists("ai-offscreen.js")) throw new Error("Build output is missing the offscreen local AI message handler.");
+if (!files.some(file => path.basename(file).startsWith("ai-offscreen.") && file.endsWith(".js"))) throw new Error("Build output is missing the bundled offscreen local AI scripts.");
 if (!exists("local-ai-bridge.js")) throw new Error("Build output is missing the shared local AI bridge.");
 if (!(manifest.permissions || []).includes("offscreen")) throw new Error("The offscreen permission is required for shared page and dashboard inference.");
 const serviceWorkerPath = manifest.background && manifest.background.service_worker;
@@ -91,8 +91,8 @@ if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entr
 if (!dashboard.includes("VERSION <b>1.4.0</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("local-ai-bridge.js")) throw new Error("Dashboard does not use the shared local AI bridge.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
-if (!offscreenHtml.includes("webllm-client.entry.js") || !offscreenHtml.includes("local-ai.js") || !offscreenHtml.includes("ai-offscreen.js")) {
-  throw new Error("The hidden AI document is missing the WebLLM client, model adapter or message handler.");
+if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {
+  throw new Error("The hidden AI document is missing its bundled WebLLM module or local AI runtime scripts.");
 }
 const scripts = files.filter(file => file.endsWith(".js"));
 if (scripts.length < 2 || !scripts.some(file => /webllm-worker/i.test(path.basename(file)))) throw new Error("The bundled WebLLM worker was not emitted into dist/.");
@@ -110,8 +110,9 @@ if (!/max_tokens\s*:/.test(allScriptCode) || !allScriptCode.includes("448") || !
 for (const taskPrompt of ["in-depth analytical breakdown", "revision notes", "understanding-focused", "Dictionary or other reference material"]) {
   if (!allScriptCode.includes(taskPrompt)) throw new Error("A required local AI analysis prompt is missing: " + taskPrompt);
 }
-if (!allScriptCode.includes("oracle:ai:request") || !allScriptCode.includes("OFFSCREEN_DOCUMENT")) {
-  throw new Error("The shared offscreen local AI request bridge is missing.");
+if (!allScriptCode.includes("oracle:ai:request") || !allScriptCode.includes("oracle:ai:offscreen") ||
+    !allScriptCode.includes("OFFSCREEN_DOCUMENT") || !allScriptCode.includes("Waiting for local model setup")) {
+  throw new Error("The shared offscreen local AI request bridge or hidden runtime handler is missing.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
