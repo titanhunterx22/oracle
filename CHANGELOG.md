@@ -1,3 +1,7 @@
+# ORACLE 1.4.2
+
+- Removed the electric orb/lightning animations and custom neon chat thinking indicator. Restored the original orb and plain typing dots.
+
 # ORACLE 1.4.1
 
 - Added a futuristic electric aura and animated lightning arcs to the shared ORACLE orb while it is processing, analysing or responding.
