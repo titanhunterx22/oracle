@@ -718,7 +718,7 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
     afterNotes: ['Create flashcards', 'Quiz me on this page', 'Save this page', 'Find the important dates'],
     afterFacts: ['Summarise this page', 'Create flashcards', 'Show page overview']
   };
-  const HELP = `## What ORACLE can do\nORACLE’s page tools use local rules, and optional Local AI can answer open-ended questions and explain topics using Chrome’s on-device model. It does not need a paid API key or AI server.\n\n**Try saying**\n- “Summarise this page” / “Give me a detailed summary”\n- “What are the main points?”\n- “Explain that more simply”\n- “Turn this into revision notes”\n- “Find the important dates”\n- “Create flashcards” / “Quiz me”\n- “Define <word>”, “Find <text> on this page”\n- “Show page overview”, “How long to read this?”, “List the links”\n- “Show my tabs”, “Save this page”, “Search my vault for <topic>”\n\nYou can also ask a question about the page and ORACLE will pull out the most relevant passages.`;
+  const HELP = `## What ORACLE can do\nORACLE uses local Qwen for page analysis, detailed explanations, summaries, revision notes, fact analysis, flashcards, quizzes, definitions and selected-text tools. Exact browser operations such as finding matches, listing links and reading statistics use local page data. No paid API key or AI server is needed.\n\n**Try saying**\n- “Summarise this page” / “Give me a detailed summary”\n- “What are the main points?”\n- “Explain that more simply”\n- “Turn this into revision notes”\n- “Find the important dates”\n- “Create flashcards” / “Quiz me”\n- “Define <word>”, “Find <text> on this page”\n- “Show page overview”, “How long to read this?”, “List the links”\n- “Show my tabs”, “Save this page”, “Search my vault for <topic>”\n\nYou can also ask a question about the page and ORACLE will pull out the most relevant passages.`;
 
   async function handle(msg, env, ctx) {
     ctx = ctx || {}; env = env || {};
@@ -844,7 +844,7 @@ internet|internet|internet|Internet`.split('\n').forEach(l => { const p = l.spli
         let doc = null; try { doc = await page(); } catch (e) { /* none */ }
         if (doc) { const found = answer(m, doc); if (found) return R(found); return R('I couldn’t find anything about that on this page. ORACLE only matches keywords in the page text, so try different words, or say **help** to see what I can do.'); }
       }
-      return R('I’m not able to process that. Enable Chrome’s on-device Local AI in Dashboard → Settings for open-ended questions, or say **help** to see the available tools.', { state: 'error' });
+      return R('I’m not able to process that. Prepare Qwen in Dashboard → Settings → Local AI reasoning, then try again, or say **help** to see the available tools.', { state: 'error' });
     } catch (e) {
       return { text: '**I couldn’t do that.** ' + (e && e.message ? e.message : String(e)), suggestions: ['Help'], state: 'error', intent: it.id };
     }
