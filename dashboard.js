@@ -336,7 +336,24 @@
   $('#fGo').onclick = doFind; $('#fQ').addEventListener('keydown', e => { if (e.key === 'Enter') doFind(); });
   for (const [id, dir] of [['#fPrev', -1], ['#fNext', 1]]) $(id).onclick = async () => { try { const t = await needTab(); fCnt(await T.send(t.id, { type: 'oracle:findStep', dir })); await T.switchTo(t); } catch (e) { $('#fCnt').textContent = e.message; } };
   $('#fClr').onclick = async () => { try { const t = await needTab(); await T.send(t.id, { type: 'oracle:findClear' }); $('#fCnt').textContent = ''; } catch (e) { $('#fCnt').textContent = e.message; } };
-  $('#cmpGo').onclick = async () => { const out = $('#cmpOut'); try { O.orb.set('analysing'); setOut(out, await T.compare(+$('#cmpA').value, +$('#cmpB').value)); O.orb.set('idle'); } catch (e) { fail(out, e); } };
+  $('#cmpGo').onclick = async () => {
+    const out = $('#cmpOut');
+    try {
+      const idA = +$('#cmpA').value, idB = +$('#cmpB').value;
+      if (!idA || !idB) throw new Error('Choose two open web pages to compare.');
+      if (idA === idB) throw new Error('Pick two different tabs.');
+      O.orb.set('analysing');
+      setOut(out, '_Qwen is comparing both pages and examining their similarities and differences…_');
+      const [a, b] = await Promise.all([T.extract(idA), T.extract(idB)]);
+      const result = await O.localAI.askTask('compare', {
+        page: a,
+        secondaryPage: b,
+        question: 'Compare these two webpages in depth. Explain what they agree on, where they differ, how their evidence and reasoning compare, and what a reader should take away.'
+      });
+      setOut(out, result);
+    } catch (e) { fail(out, e); }
+    finally { O.orb.set('idle'); }
+  };
 
   /* ───── settings ───── */
   $('#sPart').checked = st.particles; $('#sType').checked = st.typing; $('#sCalm').checked = st.reduceMotion;
