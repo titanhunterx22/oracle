@@ -191,7 +191,7 @@
         const tasks = { explain: 'explain', simplify: 'simple', summarise: 'summarise', define: 'define', keypoints: 'keypoints', revision: 'study', flashcards: 'cards', translate: 'translate' };
         let reference = '';
         if (id === 'define') {
-          const terms = [...new Set((selection.match(/[\\p{L}][\\p{L}’'\\-]{5,}/gu) || []).map(term => term.toLowerCase()))]
+          const terms = [...new Set((selection.match(/[\p{L}][\p{L}’'\-]{5,}/gu) || []).map(term => term.toLowerCase()))]
             .sort((a, b) => b.length - a.length).slice(0, 5);
           const definitions = [];
           for (const term of terms) {
@@ -203,7 +203,7 @@
             }
             if (definitions.length >= 4) break;
           }
-          reference = definitions.join('\\n\\n');
+          reference = definitions.join('\n\n');
         }
         show(id, '_Qwen is analysing your selected text…_');
         let result = await O.localAI.askTask(tasks[id], {
@@ -223,10 +223,10 @@
         });
         if (id === 'flashcards') {
           try {
-            const clean = result.replace(/^\\s*```(?:json)?\\s*/i, '').replace(/\\s*```\\s*$/i, '');
+            const clean = result.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
             const start = clean.indexOf('{'), end = clean.lastIndexOf('}');
             const data = JSON.parse(clean.slice(start, end + 1));
-            if (Array.isArray(data.cards)) result = '## Flashcards\\n\\n' + data.cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\\n\\n' + card.a).join('\\n\\n');
+            if (Array.isArray(data.cards)) result = '## Flashcards\n\n' + data.cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n');
           } catch (_) { /* Preserve the model response if structured output is imperfect. */ }
         }
         if (typeof result !== 'string' || !result.trim()) throw new Error('The local AI returned an empty result.');
