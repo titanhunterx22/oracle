@@ -25,7 +25,7 @@
   const PAGE_LIMIT = 3200;
   const SELECTION_LIMIT = 3200;
   const SOURCE_LIMIT = 5;
-  const SOURCE_TEXT_LIMIT = 1050;
+  const SOURCE_TEXT_BUDGET = 3400;
   let engine = null;
   let worker = null;
   let loading = null;
@@ -256,7 +256,7 @@
   }
 
   function makeUserPrompt(question, options) {
-    const safeQuestion = String(question || '').trim().slice(0, 1600);
+    const safeQuestion = String(question || '').trim().slice(0, Array.isArray(options.sources) ? 1100 : 1600);
     const parts = ['User request:\n' + safeQuestion];
     const selection = String(options.selection || '').trim();
     if (selection) {
@@ -286,14 +286,14 @@
     }
     const researchSources = Array.isArray(options.sources) ? options.sources.slice(0, SOURCE_LIMIT) : [];
     if (researchSources.length) {
+      const perSourceLimit = Math.max(650, Math.floor(SOURCE_TEXT_BUDGET / researchSources.length));
       const packedSources = researchSources.map((item, index) => {
         const rawUrl = String(item && item.url || '').slice(0, 500);
         return {
           id: 'S' + (index + 1),
           title: String(item && item.title || 'Untitled source').slice(0, 200),
           domain: String(item && item.domain || '').slice(0, 120),
-          url: /^https?:\/\//i.test(rawUrl) ? rawUrl : '',
-          text: representativeExcerpt(String(item && item.text || ''), SOURCE_TEXT_LIMIT)
+          text: representativeExcerpt(String(item && item.text || ''), perSourceLimit)
         };
       }).filter(item => item.text);
       if (packedSources.length) {
