@@ -1,6 +1,6 @@
 # ORACLE — private Chromium browser companion
 
-ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. Its page analysis, dictionary, study tools, tab manager and Knowledge Vault run locally. Optional open-ended AI uses **WebLLM + WebGPU** with Qwen 2.5 1.5B Instruct; there are no paid API keys, accounts, analytics or ORACLE AI servers.
+ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. It uses **Qwen 2.5 1.5B Instruct running locally with WebLLM + WebGPU** for page analysis, in-depth explanations, summaries, fact analysis, revision notes, flashcards, quizzes, definitions, selected-text tools and open-ended chat. The offline dictionary and exact browser operations remain local data tools. There are no paid API keys, accounts, analytics or ORACLE AI servers.
 
 ## Install the ready-built extension (recommended)
 
@@ -42,11 +42,11 @@ The expanded data is based on [Open English WordNet 2025+](https://github.com/gl
 | Offline dictionary | Dashboard → **Text assistant**, or ask `Define <word>` |
 | Change keyboard shortcuts | `edge://extensions/shortcuts` or `chrome://extensions/shortcuts` |
 
-Example requests: “Summarise this page”, “What are the main points?”, “Explain this simply”, “Find the important dates”, “Create flashcards”, “Quiz me”, “Define photosynthesis”, “Find this phrase on the page”, “Show my tabs”, and “Save this page”. Open-ended questions use Local AI once it has been prepared. Existing deterministic page tools continue to work without WebGPU.
+Example requests: “Give me an in-depth analysis of this page”, “Explain the author’s argument”, “What evidence supports the main claim?”, “Explain this simply”, “Turn this into detailed revision notes”, “Find and explain the important facts”, “Create flashcards”, “Quiz me”, “Explain this word in context”, and “Translate this passage”. Generated content tasks use Local AI once the model has been prepared. Exact operations such as searching for text, listing links, reading statistics, navigating tabs and retrieving dictionary senses remain deterministic.
 
 ## Local AI: WebLLM + Qwen 2.5 1.5B Instruct
 
-ORACLE bundles the WebLLM JavaScript runtime into the extension and runs inference in a **dedicated Web Worker** using WebGPU. It uses `Qwen2.5-1.5B-Instruct-q4f32_1-MLC`, configured with a 2,048-token context and up to 384 generated tokens. WebLLM estimates about 1.8 GB of VRAM for this model. The q4f32 variant is selected for broad GPU compatibility; actual speed and stability depend on the browser, graphics driver and available shared memory.
+ORACLE runs one shared WebLLM runtime in a hidden extension document and performs inference in a **dedicated Web Worker** using WebGPU. The popup, dashboard and in-page selection assistant all send requests to this same model worker, rather than loading separate copies. It uses `Qwen2.5-1.5B-Instruct-q4f32_1-MLC`, configured with a 2,048-token context and up to 448 generated tokens for longer analysis tasks. WebLLM estimates about 1.8 GB of VRAM for this model. The q4f32 variant is selected for broad GPU compatibility; actual speed and stability depend on the browser, graphics driver and available shared memory.
 
 On first setup, open Dashboard → Settings → Local AI reasoning and select **Download & prepare model**. An internet connection is needed to download the model files from Hugging Face/MLC. WebLLM caches the model locally; later sessions can load the cached model without downloading it again unless browser storage is cleared or evicted. Generation itself happens locally. When relevant, ORACLE can also retrieve up to two matching notes from your local Knowledge Vault and include them as private context. ORACLE does not send prompts, saved notes, selected text, webpage content or answers to an AI server.
 
@@ -56,7 +56,8 @@ The model has no live internet access. Do not rely on it for live/current facts,
 
 ## Permissions and privacy
 
-- `storage` — chat, vault, bookmarks, settings and the local-model setup marker in browser storage.
+- `storage` — chat, vault, bookmarks, settings and local-model setup information.
+- `offscreen` — hosts one hidden extension document so page tools and dashboard share the same WebGPU model without opening a tab.
 - `tabs` — list, search, switch and close tabs.
 - `activeTab`, `scripting` — read the active page when you invoke ORACLE.
 - Content script on HTTP/HTTPS pages — page extraction, selection helper, highlighting and the command palette.
@@ -71,11 +72,11 @@ The extension CSP allows only packaged scripts/WebAssembly and the specific mode
 - Qwen 2.5 1.5B is still a small local model and is less capable than large cloud models. It can hallucinate and has no live web access.
 - The expanded offline dictionary packages Open English WordNet 2025+ (161,875 lexical forms across 120,564 synsets in the upstream release; ORACLE's compact build contains 152,459 defined word forms and 212,608 senses) alongside ORACLE's curated learner-friendly glossary. Alphabetic shards are compressed and loaded from the extension only when a word is looked up. It provides multiple WordNet senses, examples and related words, but it is a lexical database rather than a complete general-purpose learner's dictionary; specialist, inflected and newly coined terms may still be missing.
 - Spanish/French/German translation uses a small word-by-word glossary and does not preserve grammar.
-- Fact extraction lists information as written on a page; it does not independently verify claims.
+- AI fact analysis extracts and explains information in the supplied page; it does not independently verify the truth of the page’s claims. Qwen 2.5 1.5B is a compact local model, so verify important outputs.
 - Browser-internal pages, extension stores and some built-in PDF viewer pages cannot be read by extensions.
 
 ## Project files
 
-`local-ai.js` — Local AI adapter and UI-facing API; `webllm-client.entry.js` and `webllm-worker.entry.js` — WebLLM client/worker build entries; `engine.js` — deterministic NLP and intent router; `chat.js` — shared popup/dashboard chat; `content.js` — page extraction and selection tools; `dictionary.js` — curated offline English glossary; `dictionary-full.js` — lazy WordNet shard loader; `scripts/build_offline_dictionary.py` — verified dataset-to-shard builder; `storage.js` — local persistence; `tools.js` — tabs and page messaging; `dashboard.*` and `popup.*` — user interface.
+`local-ai.js` — local inference and task prompts; `local-ai-bridge.js` — shared API for dashboard, popup and content scripts; `ai-offscreen.html` / `ai-offscreen.js` — the single shared hidden AI runtime; `webllm-client.entry.js` and `webllm-worker.entry.js` — WebLLM client/worker build entries; `engine.js` — deterministic NLP and intent router; `chat.js` — shared popup/dashboard chat; `content.js` — page extraction and selection tools; `dictionary.js` — curated offline English glossary; `dictionary-full.js` — lazy WordNet shard loader; `scripts/build_offline_dictionary.py` — verified dataset-to-shard builder; `storage.js` — local persistence; `tools.js` — tabs and page messaging; `dashboard.*` and `popup.*` — user interface.
 
 For detailed Edge-specific install and troubleshooting steps, see [EDGE_SETUP.md](EDGE_SETUP.md). See [CHANGELOG.md](CHANGELOG.md) for release history.
