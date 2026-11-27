@@ -138,8 +138,12 @@ if (!allScriptCode.includes("valid external instance reference no longer exists"
 if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
 }
-if (!allScriptCode.includes("WRITING_DRAFT_LIMIT") || !allScriptCode.includes("writing_review") || !allScriptCode.includes("oracle_writing_workspace_v1")) {
-  throw new Error("Local writing prompts or private draft recovery are missing from the build.");
+if (!localAiSource.includes("WRITING_DRAFT_LIMIT") || !localAiSource.includes("writing_review") || !localAiSource.includes("User writing draft")) {
+  throw new Error("Local writing prompts or bounded draft context are missing from the source.");
+}
+const dashboardSource = await fs.readFile(path.resolve("dashboard.js"), "utf8");
+if (!dashboardSource.includes("oracle_writing_workspace_v1") || !dashboardSource.includes("writerDraft") || !dashboardSource.includes("writerReview")) {
+  throw new Error("Local writing draft recovery or dashboard controls are missing from the source.");
 }
 if (!allScriptCode.includes("fab-orbit") || !allScriptCode.includes("Research tab list refreshed")) {
   throw new Error("The refreshed selection orb or cross-tab research controls are missing from the build.");
