@@ -114,7 +114,9 @@ if (!allScriptCode.includes("oracle:ai:request") || !allScriptCode.includes("ora
     !allScriptCode.includes("OFFSCREEN_DOCUMENT") || !allScriptCode.includes("Waiting for local model setup")) {
   throw new Error("The shared offscreen local AI request bridge or hidden runtime handler is missing.");
 }
-if (!allScriptCode.includes("runSerial") || !allScriptCode.includes("secondaryPage")) {
+const offscreenSource = await fs.readFile(path.resolve("ai-offscreen.js"), "utf8");
+const localAiSource = await fs.readFile(path.resolve("local-ai.js"), "utf8");
+if (!offscreenSource.includes("runSerial") || !offscreenSource.includes("inferenceQueue") || !localAiSource.includes("secondaryPage")) {
   throw new Error("Shared AI inference must be serialized and support two-page comparison context.");
 }
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
