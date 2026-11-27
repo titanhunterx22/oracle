@@ -378,6 +378,7 @@
   });
   $('#researchSelectFive').addEventListener('click', async () => {
     try {
+      await renderResearchTabs();
       const query = ($('#researchTabSearch').value || '').trim().toLowerCase();
       const visible = researchTabs.filter(t => ((t.title || '') + ' ' + t.url).toLowerCase().includes(query));
       researchSelected.clear();
@@ -429,6 +430,8 @@
     });
     if (unique.length < 2) { fail(out, new Error('The selected tabs contain the same page. Choose at least two different pages.')); return; }
     crossResearchBusy = true;
+    lastCrossResearch = null;
+    renderResearchSources([]);
     $('#researchRun').disabled = true;
     $('#researchSave').disabled = true;
     $('#researchCopy').disabled = true;
