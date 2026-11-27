@@ -69,7 +69,7 @@
         const el = document.createElement('div'); el.className = 'msg ' + role + (err ? ' err' : '');
         const body = document.createElement('div'); body.className = 'md'; el.appendChild(body);
         const meta = document.createElement('div'); meta.className = 'meta'; meta.innerHTML = `<time>${hhmm(ts)}</time>`;
-        if (role === 'bot') { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = async () => { try { await navigator.clipboard.writeText(O.plain(text)); c.textContent = 'Copied'; } catch (x) { c.textContent = 'Blocked'; } setTimeout(() => (c.textContent = 'Copy'), 1300); }; meta.appendChild(c); }
+        if (role === 'bot') { const c = document.createElement('button'); c.textContent = 'Copy'; c.onclick = async () => { try { await navigator.clipboard.writeText(O.plain(text || body.innerText)); c.textContent = 'Copied'; } catch (x) { c.textContent = 'Blocked'; } setTimeout(() => (c.textContent = 'Copy'), 1300); }; meta.appendChild(c); }
         el.appendChild(meta); log.appendChild(el);
         if (role === 'user') body.textContent = text; else body.innerHTML = O.md(text);
         scroll(); return { el, body };
@@ -84,6 +84,24 @@
         body.textContent = '';
         for (let i = 0; i < plain.length; i += step) { body.textContent = plain.slice(0, i + step); scroll(); await sleep(14); }
         body.innerHTML = O.md(text); scroll();
+      }
+      function formatStructuredReply(task, raw) {
+        if (task !== 'cards' && task !== 'quiz') return raw;
+        try {
+          const source = String(raw || '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '');
+          const first = source.indexOf('{'), last = source.lastIndexOf('}');
+          if (first < 0 || last <= first) return raw;
+          const data = JSON.parse(source.slice(first, last + 1));
+          if (task === 'cards' && Array.isArray(data.cards)) {
+            const cards = data.cards.filter(card => card && typeof card.q === 'string' && typeof card.a === 'string');
+            return cards.length ? '## Flashcards\n\n' + cards.map((card, i) => '**' + (i + 1) + '. ' + card.q + '**\n\n' + card.a).join('\n\n') : raw;
+          }
+          if (task === 'quiz' && Array.isArray(data.questions)) {
+            const questions = data.questions.filter(q => q && typeof q.q === 'string' && Array.isArray(q.options) && q.options.length === 4 && q.options.every(option => typeof option === 'string') && Number.isInteger(q.answer) && q.answer >= 0 && q.answer < 4);
+            return questions.length ? '## Quiz\n\n' + questions.map((q, i) => '**' + (i + 1) + '. ' + q.q + '**\n' + q.options.map((option, k) => '  ' + 'ABCD'[k] + ') ' + option).join('\n') + '\n\n**Answer:** ' + 'ABCD'[q.answer] + (q.explanation ? ' — ' + q.explanation : '')).join('\n\n') : raw;
+          }
+        } catch (_) { /* Keep the original response if structured output is imperfect. */ }
+        return raw;
       }
 
       /* history */
@@ -124,14 +142,16 @@
               flashcards: 'cards',
               quiz: 'quiz',
               define: 'define',
-              explain: 'explain'
+              explain: 'explain',
+              overview: 'overview',
+              keywords: 'keywords'
             };
             const task = aiTasks[intent];
             if ((task || intent === 'none') && O.localAI) {
               let doc = null, selection = '', extra = {};
               const asksForSelection = /\b(selected|selection|highlight)\b/i.test(text);
               const asksAboutPage = /\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text);
-              const pageTask = ['quick', 'detailed', 'keypoints', 'study', 'facts', 'cards', 'quiz'].includes(task);
+              const pageTask = ['quick', 'detailed', 'keypoints', 'study', 'facts', 'cards', 'quiz', 'overview', 'keywords'].includes(task);
               if (asksForSelection) selection = await env.getSelection();
               else if (pageTask || asksAboutPage) doc = await env.getPage();
               else if (['simple', 'explain', 'keypoints'].includes(task) && ctx.last && /\b(that|this|it|previous|last|above|again)\b/i.test(text)) selection = O.plain(ctx.last).slice(0, 3200);
@@ -151,7 +171,7 @@
                 }
               }
               const answer = await env.askAI(text, doc, selection, task, extra);
-              res = { text: answer, state: 'responding', intent: 'local-ai', suggestions: O.engine.SUG.default };
+              res = { text: answer, state: 'responding', intent: 'local-ai', aiTask: task, suggestions: O.engine.SUG.default };
             } else {
               res = await O.engine.handle(text, env, ctx);
             }
@@ -174,11 +194,12 @@
 
           const answerText = res && typeof res.text === 'string' ? res.text : 'The assistant returned no response. Please try again.';
           const err = !res || res.state === 'error';
+          const displayText = err ? answerText : formatStructuredReply(res && res.aiTask, answerText);
           O.orb.set(err ? 'error' : 'responding', err ? 1800 : 0);
           const b = bubble('bot', '', Date.now(), err);
-          await typeIn(b.body, answerText);
-          await O.store.pushMessage({ role: 'bot', text: answerText, ts: Date.now(), err });
-          ctx.last = answerText;
+          await typeIn(b.body, displayText);
+          await O.store.pushMessage({ role: 'bot', text: displayText, ts: Date.now(), err });
+          ctx.last = displayText;
           setChips(res && res.suggestions);
           if (!err) O.orb.set('idle');
         } catch (e) {
