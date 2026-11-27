@@ -1,3 +1,12 @@
+# ORACLE 1.4.0
+
+- Routed page-analysis formats through local Qwen: quick and detailed analysis, key points, plain-language explanations, revision notes, fact analysis, flashcards and quizzes are now generated and reasoned about by the model instead of extractive sentence selection.
+- Routed chat requests, selected-text actions, text assistant tasks, contextual definitions, translations and page summaries saved to the Knowledge Vault through local Qwen.
+- Added task-specific prompts that request explanations, evidence, relationships, implications and limitations instead of simply repeating source text.
+- Added structured AI output for interactive flashcards and multiple-choice quizzes, with readable-response fallback if the model returns malformed structured output.
+- Moved WebLLM into one shared hidden offscreen document. Popup, dashboard and in-page tools use the same model worker, avoiding duplicate model sessions and visible helper tabs.
+- Added the offscreen permission and build verification for the shared runtime. Dictionary retrieval, page extraction, reading statistics, links, find/highlight and tab operations remain deterministic local tools.
+
 # ORACLE 1.3.0
 
 - Expanded the offline English dictionary with Open English WordNet 2025+ (over 150,000 lexical forms and multiple senses per word).
