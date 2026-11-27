@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.4.2") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.5.0") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -82,13 +82,16 @@ if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw n
 if (!dashboard.includes("Qwen 2.5 1.5B") || !dashboard.includes("ai-specs")) {
   throw new Error("The Qwen model description/specifications are missing from the dashboard.");
 }
+if (!dashboard.includes('id="researchTabList"') || !dashboard.includes('id="researchRun"') || !dashboard.includes("Cross-tab research")) {
+  throw new Error("The Cross-tab Research workspace is missing from the dashboard.");
+}
 const styleFiles = files.filter(file => file.endsWith(".css"));
 const styleCode = (await Promise.all(styleFiles.map(file => fs.readFile(file, "utf8")))).join("\\n");
 if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) {
   throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
 }
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.4.2</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.5.0</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("dashboard.")) throw new Error("Dashboard application scripts are missing from the built dashboard.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
 if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {
@@ -119,12 +122,18 @@ const localAiSource = await fs.readFile(path.resolve("local-ai.js"), "utf8");
 if (!offscreenSource.includes("runSerial") || !offscreenSource.includes("inferenceQueue") || !localAiSource.includes("secondaryPage")) {
   throw new Error("Shared AI inference must be serialized and support two-page comparison context.");
 }
+if (!localAiSource.includes("SOURCE_LIMIT") || !localAiSource.includes("Numbered cross-tab research source set") || !localAiSource.includes("research: 'Act as a careful research analyst")) {
+  throw new Error("Grounded multi-source Qwen research prompt is missing.");
+}
 if (!allScriptCode.includes("valid external instance reference no longer exists") ||
     !allScriptCode.includes("GPU device was lost while ORACLE was generating a reply")) {
   throw new Error("WebGPU device-loss detection and recovery are missing from the build.");
 }
 if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
+}
+if (!allScriptCode.includes("fab-orbit") || !allScriptCode.includes("Research selected tabs")) {
+  throw new Error("The refreshed selection orb or cross-tab research controls are missing from the build.");
 }
 const popup = await fs.readFile(path.join(root, popupPath), "utf8");
 if (!files.some(file => path.basename(file).startsWith("dictionary-full") && file.endsWith(".js"))) throw new Error("The expanded offline dictionary loader is missing from the package.");
