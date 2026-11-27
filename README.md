@@ -40,9 +40,12 @@ The expanded data is based on [Open English WordNet 2025+](https://github.com/gl
 | Full dashboard | Open the popup → **Dashboard** |
 | Local AI setup | Dashboard → **Settings** → **Local AI reasoning** → **Download & prepare model** |
 | Offline dictionary | Dashboard → **Text assistant**, or ask `Define <word>` |
+| Writing assistant | Dashboard → **Writing assistant** |
+
+The Writing assistant provides proofread, rewrite, clarity, shorten, expand, continue, email and academic-polish workflows, with tone, audience, format and optional instructions. **Review draft** produces constructive editorial feedback separately from the edited text. Page selections and readable page text can be inserted into the editor. The working draft and editor settings autosave to `chrome.storage.local` on this device. Generated results are shown separately; **Use result as draft** is an explicit action and the previous draft can be restored. Results can be copied or saved to the Knowledge Vault. Drafts and prompts are passed to the existing local Qwen model and are not sent to an ORACLE server.
 | Change keyboard shortcuts | `edge://extensions/shortcuts` or `chrome://extensions/shortcuts` |
 
-Example requests: “Give me an in-depth analysis of this page”, “Explain the author’s argument”, “What evidence supports the main claim?”, “Compare these two pages”, “Give me a website overview”, “Find the main themes and keywords”, “Explain this simply”, “Turn this into detailed revision notes”, “Find and explain the important facts”, “Create flashcards”, “Quiz me”, “Explain this word in context”, and “Translate this passage”. Generated content tasks use Local AI once the model has been prepared. Exact operations such as searching for text, listing links, reading statistics, navigating tabs and retrieving dictionary senses remain deterministic.
+Example requests: “Give me an in-depth analysis of this page”, “Explain the author’s argument”, “What evidence supports the main claim?”, “Compare these two pages”, “Give me a website overview”, “Find the main themes and keywords”, “Explain this simply”, “Turn this into detailed revision notes”, “Find and explain the important facts”, “Create flashcards”, “Quiz me”, “Explain this word in context”, and “Translate this passage”, or “Proofread this email”. Generated content tasks use Local AI once the model has been prepared. Exact operations such as searching for text, listing links, reading statistics, navigating tabs and retrieving dictionary senses remain deterministic.
 
 ## Local AI: WebLLM + Qwen 2.5 1.5B Instruct
 
