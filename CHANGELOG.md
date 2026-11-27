@@ -1,3 +1,9 @@
+# ORACLE 1.4.1
+
+- Added a futuristic electric aura and animated lightning arcs to the shared ORACLE orb while it is processing, analysing or responding.
+- Added a compact chat thinking indicator that switches between THINKING and ANALYSING PAGE.
+- Respects the system and ORACLE reduced-motion settings.
+
 # ORACLE 1.4.0
 
 - Routed page-analysis formats through local Qwen: quick and detailed analysis, key points, plain-language explanations, revision notes, fact analysis, flashcards and quizzes are now generated and reasoned about by the model instead of extractive sentence selection.
