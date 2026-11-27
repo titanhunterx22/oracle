@@ -10,6 +10,7 @@
       <button data-p="chat" class="on"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H5l1.7-3.1A7.5 7.5 0 1 1 20 11.5Z"/><path d="M8 11h8M8 14h5"/></svg><span>Chat</span><span class="nav-arrow">↗</span></button>
       <button data-p="analyse"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z"/><path d="M4 17a2.5 2.5 0 0 1 2.5-2.5H20M8 7h8M8 10h5"/></svg><span>Page analysis</span><span class="nav-arrow">↗</span></button>
       <button data-p="text"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M12 6v13M8 19h8M8 10h8"/><path d="m8.5 6 3.5-3 3.5 3"/></svg><span>Text assistant</span><span class="nav-arrow">↗</span></button>
+      <button data-p="writing"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5 8.2 18.7 19 7.9a2.1 2.1 0 0 0-3-3L5.2 15.7 4 19.5Z"/><path d="m14.8 6.1 3.1 3.1M4 21h16"/></svg><span>Writing assistant</span><span class="nav-arrow">↗</span></button>
       <span class="nav-group-label nav-group-spaced">Your library</span>
       <button data-p="vault"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M4 8h16M8 12h8M8 15h5"/></svg><span>Knowledge vault</span><span class="nav-arrow">↗</span></button>
       <span class="nav-group-label nav-group-spaced">Browser</span>
@@ -23,7 +24,7 @@
   <main>
     <div class="workspace-head glass">
       <div class="workspace-title-wrap"><span class="eyebrow"><span class="eyebrow-mark"></span> PRIVATE KNOWLEDGE WORKSPACE</span><h2 id="panelTitle">Chat</h2><p id="panelDescription">Ask questions about the page you have open.</p></div>
-      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.5.0</b></span></div>
+      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.6.0</b></span></div>
     </div>
     <div id="welcome" class="glass banner" hidden><b>ORACLE is installed.</b> Everything runs on this device, with no accounts and no API keys. Open any web page, then use the popup (<kbd>Ctrl+Shift+O</kbd>), the command palette (<kbd>Ctrl+Shift+K</kbd>) or this dashboard. <button class="btn sm" id="welcomeX">Got it</button></div>
 
@@ -54,6 +55,63 @@
         <button class="btn sm" data-t="explain">Explain</button><button class="btn sm" data-t="simplify">Simplify</button><button class="btn sm" data-t="summarise">Summarise</button><button class="btn sm" data-t="define">Define words</button><button class="btn sm" data-t="keypoints">Key points</button><button class="btn sm" data-t="revision">Revision notes</button><button class="btn sm" data-t="flashcards">Flashcards</button>
         <span class="row"><select id="tLang" style="width:auto"><option value="es">Spanish</option><option value="fr">French</option><option value="de">German</option></select><button class="btn sm" data-t="translate">Translate</button></span></div>
       <div class="outcard"><div id="tOut" class="md"><p class="mute">Results appear here.</p></div><div class="acts"><button class="btn sm" data-copy="#tOut">Copy</button><button class="btn sm" data-save="#tOut" data-title="Text note">Save to Vault</button></div></div>
+    </section>
+
+    <section id="p-writing" class="panel glass scroll writing-workspace">
+      <div class="section-kicker"><span class="section-symbol">✎</span><div><b>Writing studio</b><small>Draft, refine and review your writing with private, on-device AI.</small></div><span class="section-count">LOCAL QWEN</span></div>
+      <div class="writing-intro">
+        <div><h2>Make every sentence work harder.</h2><p class="mute">Bring a draft, a rough outline or a few notes. Choose what you want ORACLE to do, set the voice and audience, then generate an editable result.</p></div>
+        <span class="privacy-seal"><i></i> ON DEVICE</span>
+      </div>
+      <div class="writing-layout">
+        <div class="writing-editor-card">
+          <div class="writing-card-head"><div><span class="eyebrow">01 / YOUR DRAFT</span><h3>Working text</h3></div><span id="writerCount" class="writer-count">0 / 4,200 characters</span></div>
+          <textarea id="writerDraft" maxlength="4200" spellcheck="true" placeholder="Paste your writing here, or start with a rough idea. ORACLE will preserve your meaning while improving the writing…"></textarea>
+          <div class="bar wrap writer-imports">
+            <button class="btn sm" id="writerImportSelection" type="button">Insert page selection</button>
+            <button class="btn sm" id="writerImportPage" type="button">Insert page text</button>
+            <button class="btn sm" id="writerCopyDraft" type="button">Copy draft</button>
+            <button class="btn sm" id="writerClear" type="button">Clear</button>
+          </div>
+          <div class="writer-save-state"><span id="writerStatus" role="status" aria-live="polite">Your draft is saved locally as you type.</span><button class="btn sm" id="writerRestore" type="button" disabled>Restore previous draft</button></div>
+        </div>
+        <div class="writing-controls-card">
+          <div class="writing-card-head"><div><span class="eyebrow">02 / EDITING BRIEF</span><h3>Choose your result</h3></div></div>
+          <label for="writerAction">Writing task</label>
+          <select id="writerAction">
+            <option value="proofread">Proofread — fix grammar and spelling</option>
+            <option value="rewrite">Rewrite — improve the whole draft</option>
+            <option value="clarify">Improve clarity and flow</option>
+            <option value="shorten">Shorten — keep the important points</option>
+            <option value="expand">Expand — develop ideas and transitions</option>
+            <option value="continue">Continue writing from the ending</option>
+            <option value="email">Shape into a polished email</option>
+            <option value="academic">Polish academic writing</option>
+          </select>
+          <div class="grid2 writer-selects">
+            <div><label for="writerTone">Tone</label><select id="writerTone"><option value="preserve">Preserve my original voice</option><option>Natural</option><option>Friendly</option><option>Professional</option><option>Formal</option><option>Academic</option><option>Persuasive</option><option>Confident</option><option>Concise</option></select></div>
+            <div><label for="writerAudience">Audience</label><select id="writerAudience"><option>General reader</option><option>Teacher or examiner</option><option>Classmates or students</option><option>Colleagues</option><option>Clients or customers</option><option>Specialist audience</option><option>Friends or family</option></select></div>
+          </div>
+          <label for="writerFormat">Format</label>
+          <select id="writerFormat"><option>Keep the current format</option><option>Email</option><option>Essay</option><option>Academic response</option><option>Report</option><option>Social post</option><option>Cover letter</option><option>Speech or presentation</option></select>
+          <label for="writerInstructions">Extra instructions <span class="mute">(optional)</span></label>
+          <textarea id="writerInstructions" rows="3" maxlength="600" placeholder="E.g. keep it under 200 words, use British English, retain these technical terms…"></textarea>
+          <div class="writer-quality-note"><b>Editing promise</b><span>ORACLE aims to preserve your intent, facts, names, figures and citations. It should not invent evidence or add unsupported claims.</span></div>
+          <div class="bar wrap writer-actions">
+            <button class="btn primary" id="writerRun" type="button">Generate improved draft</button>
+            <button class="btn" id="writerReview" type="button">Review draft</button>
+          </div>
+        </div>
+      </div>
+      <div class="writing-result-card">
+        <div class="writing-card-head"><div><span class="eyebrow">03 / RESULT</span><h3 id="writerResultTitle">Your improved draft</h3></div><span id="writerResultMeta" class="writer-result-meta">Ready when you are</span></div>
+        <div id="writerResult" class="md writing-result" aria-live="polite"><div class="empty-note"><h3>Your result will appear here</h3><p>Generate an edit to see a clean version you can copy, save or use as your next draft. Your original text stays untouched until you choose to use the result.</p></div></div>
+        <div class="bar wrap writer-result-actions">
+          <button class="btn sm" id="writerCopyResult" type="button" disabled>Copy result</button>
+          <button class="btn sm" id="writerApply" type="button" disabled>Use result as draft</button>
+          <button class="btn sm" id="writerSaveResult" type="button" disabled>Save to Knowledge Vault</button>
+        </div>
+      </div>
     </section>
 
     <section id="p-vault" class="panel glass scroll">
@@ -113,7 +171,7 @@
           <div class="bar wrap"><button class="btn" id="sShort">Manage shortcuts</button><span id="sShortMsg" class="mute"></span></div>
         </div>
         <div class="settings-card settings-wide" id="localAiCard">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Power page analysis, chat, definitions, study tools and selected-text actions with one shared on-device model.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Power page analysis, chat, writing assistance, definitions, study tools and selected-text actions with one shared on-device model.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
           <p>Uses WebLLM to run Qwen 2.5 1.5B Instruct (4-bit) in a dedicated WebGPU worker. The model is tuned for a 2K context to balance stronger answers with integrated-GPU memory. Model files are cached by your browser; prompts and answers stay on this device. An internet connection is needed for the first download. No paid API key or AI server is used.</p>
           <div class="ai-specs" aria-label="Local AI model specifications"><span><b>1.5B</b><small>Parameters</small></span><span><b>Q4F32</b><small>Quantisation</small></span><span><b>2K</b><small>Context</small></span><span><b>LOCAL</b><small>Inference</small></span></div>
           <div class="bar wrap"><button class="btn primary" id="aiPrepare" type="button">Download &amp; prepare Qwen</button><span id="aiStatus" class="mute" role="status" aria-live="polite">Checking WebGPU support…</span></div>
@@ -126,13 +184,13 @@
         <div class="settings-card settings-wide">
           <div class="settings-card-head"><span class="settings-icon">ⓘ</span><div><h3>Permissions &amp; data</h3><p>Why access is needed, and how to clear your information.</p></div></div>
           <details class="permission-details"><summary>View permission explanations</summary>
-            <ul class="plain"><li><b>storage</b> — saves your chat, vault, bookmarks and settings locally.</li><li><b>tabs</b> — lists, searches, switches and closes tabs, and finds duplicates. ORACLE reads tab titles and addresses only for this.</li><li><b>activeTab + scripting</b> — lets ORACLE read a tab you had open before installing it, when you click the toolbar icon.</li><li><b>Access to http/https pages (content script)</b> — needed to read page text for analysis, show the selection button and highlight matches. Nothing is sent anywhere.</li></ul>
+            <ul class="plain"><li><b>storage</b> — saves your chat, vault, bookmarks, settings and the writing assistant’s autosaved draft locally.</li><li><b>tabs</b> — lists, searches, switches and closes tabs, and finds duplicates. ORACLE reads tab titles and addresses only for this.</li><li><b>activeTab + scripting</b> — lets ORACLE read a tab you had open before installing it, when you click the toolbar icon.</li><li><b>Access to http/https pages (content script)</b> — needed to read page text for analysis, show the selection button and highlight matches. Nothing is sent anywhere.</li></ul>
           </details>
           <div class="data-actions"><div><b>Your local data</b><small>Clear chat history or remove all saved ORACLE data from this device.</small></div><div class="bar wrap"><button class="btn" id="sClearChat">Clear conversation</button><button class="btn danger" id="sClearAll">Delete all data</button></div></div>
         </div>
         <div class="settings-card settings-wide about-card">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.5.0</b></span></div>
-          <p>ORACLE uses one shared on-device Qwen model for generated analysis, explanations, summaries, revision notes, facts, flashcards, quizzes and selected-text tools. Exact browser operations and dictionary retrieval remain local and deterministic, with dictionary entries supplied to the model when a deeper explanation is requested.</p>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.6.0</b></span></div>
+          <p>ORACLE uses one shared on-device Qwen model for generated analysis, writing assistance, explanations, summaries, revision notes, facts, flashcards, quizzes and selected-text tools. Exact browser operations and dictionary retrieval remain local and deterministic, with dictionary entries supplied to the model when a deeper explanation is requested.</p>
         </div>
       </div>
     </section>

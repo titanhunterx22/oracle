@@ -1,6 +1,6 @@
 {
   "name": "oracle-browser-extension",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "description": "Build ORACLE for Chromium browsers with bundled WebLLM local AI.",
   "scripts": {

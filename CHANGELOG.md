@@ -1,3 +1,10 @@
+# ORACLE 1.6.0
+
+- Added a dedicated local Writing Assistant workspace with proofread, rewrite, clarity, shorten, expand, continue, email and academic editing workflows.
+- Added tone, audience, format and custom-instruction controls, plus a separate editorial review with prioritised feedback and sentence-level suggestions.
+- Added page-selection/page-text import, local draft autosave and recovery, character/word counts, copy, Knowledge Vault saving and an explicit apply/restore flow that protects the original draft.
+- Added dedicated Qwen writing and writing-review prompts that preserve source details and avoid inventing facts, quotations or references.
+
 # ORACLE 1.5.0
 
 - Added Cross-tab Research: select up to five open webpages, ask a research question, and receive a local Qwen synthesis of consensus, disagreements, evidence quality and source-specific findings with [S1]–style citations and clickable source references.

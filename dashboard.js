@@ -15,11 +15,12 @@
   $('#sideOrb').innerHTML = O.orb.html(); O.orb.boot(); O.particles.start($('#fx'), st.particles && !st.reduceMotion);
 
   /* ───── navigation ───── */
-  const PANELS = ['chat', 'analyse', 'text', 'vault', 'tools', 'settings'];
+  const PANELS = ['chat', 'analyse', 'text', 'writing', 'vault', 'tools', 'settings'];
   const PANEL_META = {
     chat: ['Chat', 'Ask questions about the page you have open.'],
     analyse: ['Page analysis', 'Turn the current page into summaries, notes and study material.'],
     text: ['Dictionary & text tools', 'Look up words or work with text you select or paste.'],
+    writing: ['Writing assistant', 'Draft, refine, proofread and review your writing with local AI.'],
     vault: ['Knowledge vault', 'Keep your notes, definitions and saved page summaries together.'],
     tools: ['Browser tools', 'Research across several open pages, manage tabs and compare sources.'],
     settings: ['Settings', 'Control your local experience and privacy preferences.']
@@ -586,6 +587,207 @@
     finally { O.orb.set('idle'); }
   };
 
+  /* ───── writing assistant ───── */
+  const WRITER_KEY = 'oracle_writing_workspace_v1';
+  const WRITER_LIMIT = 4200;
+  let writerLastResult = '', writerLastIsReview = false, writerPreviousDraft = '', writerInputSnapshot = '', writerOriginalDraft = '', writerBusy = false, writerSaveTimer = 0;
+  const writerDraft = $('#writerDraft'), writerResult = $('#writerResult');
+  function writerCount() {
+    const value = writerDraft.value || '';
+    const words = (value.match(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu) || []).length;
+    $('#writerCount').textContent = value.length.toLocaleString() + ' / ' + WRITER_LIMIT.toLocaleString() + ' characters · ' + words + ' words';
+  }
+  function writerSetStatus(message) { $('#writerStatus').textContent = message; }
+  function queueWriterSave() {
+    clearTimeout(writerSaveTimer);
+    writerSetStatus('Saving draft locally…');
+    writerSaveTimer = setTimeout(async () => {
+      try {
+        await chrome.storage.local.set({ [WRITER_KEY]: {
+          draft: writerDraft.value.slice(0, WRITER_LIMIT),
+          action: $('#writerAction').value,
+          tone: $('#writerTone').value,
+          audience: $('#writerAudience').value,
+          format: $('#writerFormat').value,
+          instructions: $('#writerInstructions').value.slice(0, 600),
+          savedAt: Date.now()
+        } });
+        writerSetStatus('Draft saved locally · ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch (error) { writerSetStatus('Draft is in this session, but local autosave failed.'); }
+    }, 450);
+  }
+  async function restoreWriterState() {
+    try {
+      const stored = await chrome.storage.local.get(WRITER_KEY);
+      const saved = stored && stored[WRITER_KEY];
+      if (saved && typeof saved === 'object') {
+        writerDraft.value = String(saved.draft || '').slice(0, WRITER_LIMIT);
+        if (saved.action && [...$('#writerAction').options].some(option => option.value === saved.action)) $('#writerAction').value = saved.action;
+        if (saved.tone) $('#writerTone').value = saved.tone;
+        if (saved.audience) $('#writerAudience').value = saved.audience;
+        if (saved.format) $('#writerFormat').value = saved.format;
+        if (typeof saved.instructions === 'string') $('#writerInstructions').value = saved.instructions.slice(0, 600);
+        writerSetStatus(saved.savedAt ? 'Recovered local draft · ' + new Date(saved.savedAt).toLocaleString() : 'Recovered local draft.');
+      }
+    } catch (error) { writerSetStatus('Draft autosave is unavailable in this browser session.'); }
+    writerCount();
+  }
+  function writerAppend(text, label) {
+    const clean = String(text || '').trim();
+    if (!clean) throw new Error('There is no readable text to insert.');
+    const separator = writerDraft.value.trim() ? '\n\n' : '';
+    const room = WRITER_LIMIT - writerDraft.value.length - separator.length;
+    if (room <= 0) throw new Error('The draft has reached its ' + WRITER_LIMIT.toLocaleString() + '-character limit.');
+    const inserted = clean.slice(0, room);
+    writerDraft.value += separator + inserted;
+    writerDraft.dispatchEvent(new Event('input', { bubbles: true }));
+    writerDraft.focus();
+    writerSetStatus(label + (inserted.length < clean.length ? ' · clipped to fit the draft limit' : ' · inserted'));
+  }
+  async function writerImport(kind) {
+    try {
+      const tab = await needTab();
+      if (kind === 'selection') {
+        const selected = await T.selection(tab.id);
+        if (!selected) throw new Error('Highlight some text on the selected page first.');
+        writerAppend(selected, 'Page selection');
+      } else {
+        const doc = await T.extract(tab.id);
+        if (!doc || !doc.text) throw new Error('ORACLE could not read text from the selected page.');
+        writerAppend(doc.text.slice(0, 3200), 'Page text');
+      }
+    } catch (error) { writerSetStatus(error.message || String(error)); toast(error.message || String(error)); }
+  }
+  writerDraft.addEventListener('input', () => {
+    writerCount();
+    if (writerLastResult && writerDraft.value.trim() !== writerInputSnapshot) {
+      $('#writerApply').disabled = true;
+      $('#writerResultMeta').textContent = 'Result is based on an earlier draft';
+    }
+    queueWriterSave();
+  });
+  ['writerAction','writerTone','writerAudience','writerFormat','writerInstructions'].forEach(id => {
+    $('#' + id).addEventListener(id === 'writerInstructions' ? 'input' : 'change', queueWriterSave);
+  });
+  $('#writerImportSelection').addEventListener('click', () => writerImport('selection'));
+  $('#writerImportPage').addEventListener('click', () => writerImport('page'));
+  $('#writerCopyDraft').addEventListener('click', async () => {
+    if (!writerDraft.value.trim()) { toast('There is no draft to copy'); return; }
+    try { await navigator.clipboard.writeText(writerDraft.value); toast('Draft copied'); }
+    catch (_) { toast('Copy was blocked by the browser'); }
+  });
+  $('#writerClear').addEventListener('click', () => {
+    if (writerDraft.value && !confirm('Clear the current draft? The previous version can be restored until another draft is applied.')) return;
+    writerDraft.value = '';
+    writerDraft.dispatchEvent(new Event('input', { bubbles: true }));
+    writerSetStatus('Draft cleared · autosave will remember the empty draft');
+  });
+  $('#writerRestore').addEventListener('click', () => {
+    if (!writerPreviousDraft) return;
+    const current = writerDraft.value;
+    writerDraft.value = writerPreviousDraft;
+    writerPreviousDraft = current;
+    $('#writerRestore').disabled = !writerPreviousDraft;
+    writerDraft.dispatchEvent(new Event('input', { bubbles: true }));
+    toast('Previous draft restored');
+  });
+  const WRITER_TASKS = {
+    proofread: 'Proofread the draft. Correct spelling, grammar, punctuation and obvious usage errors. Keep sentence choices and voice as close to the original as possible. Do not rewrite merely for preference.',
+    rewrite: 'Rewrite the draft to make it polished, coherent and engaging while preserving its original meaning, key details and intent.',
+    clarify: 'Improve clarity, structure, transitions and sentence flow. Remove ambiguity and unnecessary repetition without changing the underlying message.',
+    shorten: 'Make the draft more concise. Remove repetition and unnecessary wording while preserving all important ideas, details and qualifications.',
+    expand: 'Develop the existing ideas with clearer explanations, useful transitions and fuller reasoning. Do not invent facts, examples, statistics or evidence; where more evidence is needed, mark the gap rather than filling it.',
+    continue: 'Continue the draft naturally from its final sentence. Do not rewrite or repeat the existing text. Match its voice, structure and level of detail, and make the continuation feel connected.',
+    email: 'Shape the draft or notes into a clear, well-structured email with an appropriate subject line, greeting, concise body and sign-off. Do not invent names, dates, promises or circumstances; use neutral placeholders where essential details are missing.',
+    academic: 'Polish the draft into clear academic prose. Improve precision, logical flow and formal register while preserving the author’s argument, terminology and any existing citations. Do not fabricate references or evidence.'
+  };
+  async function runWriter(reviewOnly) {
+    if (writerBusy) return;
+    const draft = writerDraft.value.trim();
+    if (draft.length < 3) { writerSetStatus('Add a draft or insert text from a page first.'); writerDraft.focus(); return; }
+    writerBusy = true;
+    writerLastResult = '';
+    writerLastIsReview = !!reviewOnly;
+    writerInputSnapshot = draft;
+    writerOriginalDraft = draft;
+    ['writerRun','writerReview'].forEach(id => { $('#' + id).disabled = true; });
+    ['writerCopyResult','writerApply','writerSaveResult'].forEach(id => { $('#' + id).disabled = true; });
+    $('#writerResultTitle').textContent = reviewOnly ? 'Draft review' : 'Your improved draft';
+    $('#writerResultMeta').textContent = 'Working with local Qwen…';
+    setOut(writerResult, reviewOnly ? '_Reviewing structure, clarity, tone and correctness…_' : '_Editing your draft with local Qwen…_');
+    writerSetStatus(reviewOnly ? 'Reviewing draft locally…' : 'Generating an improved draft locally…');
+    O.orb.set('processing');
+    try {
+      const action = $('#writerAction').value;
+      const tone = $('#writerTone').value;
+      const audience = $('#writerAudience').value;
+      const format = $('#writerFormat').value;
+      const extra = $('#writerInstructions').value.trim();
+      const brief = [
+        reviewOnly ? 'Review the writing draft and provide specific, prioritised editorial feedback. Do not replace the full draft.' : 'Editing task: ' + (WRITER_TASKS[action] || WRITER_TASKS.rewrite),
+        'Desired tone: ' + tone + '.',
+        'Intended audience: ' + audience + '.',
+        'Format: ' + format + '.',
+        extra ? 'Additional user instructions: ' + extra : '',
+        reviewOnly
+          ? 'Give an overall assessment, identify strengths, list the most important improvements in priority order, and show up to three concrete before/after sentence-level suggestions when useful. Be constructive and precise.'
+          : 'Return only the finished draft. Do not add an introduction, explanation of changes, grading, or Markdown code fence. Preserve the author’s meaning, factual claims, proper nouns, numbers, dates and existing citations. Do not invent facts, evidence, quotations, references or unsupported detail. If the draft contains an unclear factual gap, retain the uncertainty instead of guessing.'
+      ].filter(Boolean).join('\n\n');
+      const result = await O.localAI.askTask(reviewOnly ? 'writing_review' : 'writing', {
+        draft,
+        question: brief
+      });
+      writerLastResult = result;
+      writerResult._raw = result;
+      writerResult.innerHTML = O.md(result);
+      $('#writerResultTitle').textContent = reviewOnly ? 'Editorial feedback' : 'Your improved draft';
+      $('#writerResultMeta').textContent = (reviewOnly ? 'Review complete' : 'Draft ready') + ' · ' + (result.match(/[\p{L}\p{N}]+/gu) || []).length + ' words';
+      $('#writerCopyResult').disabled = false;
+      $('#writerApply').disabled = !!reviewOnly || writerDraft.value.trim() !== writerInputSnapshot || writerLastResult.length > WRITER_LIMIT;
+      $('#writerSaveResult').disabled = false;
+      writerSetStatus(reviewOnly ? 'Review complete · original draft preserved' : 'Draft improved · original text is still unchanged');
+    } catch (error) {
+      fail(writerResult, error);
+      $('#writerResultMeta').textContent = 'Could not complete';
+      writerSetStatus(error && error.message ? error.message : String(error));
+    } finally {
+      writerBusy = false;
+      ['writerRun','writerReview'].forEach(id => { $('#' + id).disabled = false; });
+      O.orb.set('idle');
+    }
+  }
+  $('#writerRun').addEventListener('click', () => runWriter(false));
+  $('#writerReview').addEventListener('click', () => runWriter(true));
+  $('#writerCopyResult').addEventListener('click', async () => {
+    if (!writerLastResult) return;
+    try { await navigator.clipboard.writeText(writerLastResult); toast('Writing result copied'); }
+    catch (_) { toast('Copy was blocked by the browser'); }
+  });
+  $('#writerApply').addEventListener('click', () => {
+    if (!writerLastResult || writerLastIsReview || writerDraft.value.trim() !== writerInputSnapshot) return;
+    if (writerLastResult.length > WRITER_LIMIT) { toast('This result is longer than the editor limit. Copy it instead.'); return; }
+    writerPreviousDraft = writerDraft.value;
+    writerDraft.value = writerLastResult.slice(0, WRITER_LIMIT);
+    writerInputSnapshot = writerDraft.value.trim();
+    writerDraft.dispatchEvent(new Event('input', { bubbles: true }));
+    $('#writerRestore').disabled = false;
+    $('#writerApply').disabled = true;
+    toast('Result applied · your previous draft can be restored');
+  });
+  $('#writerSaveResult').addEventListener('click', async () => {
+    if (!writerLastResult) return;
+    try {
+      const task = writerLastIsReview ? 'Editorial review' : 'Improved draft';
+      await O.store.addVault({
+        type: 'note',
+        title: 'Writing assistant · ' + task + ' · ' + new Date().toLocaleDateString(),
+        text: '## Original draft\n\n' + writerOriginalDraft + '\n\n## ' + task + '\n\n' + writerLastResult
+      });
+      toast('Writing result saved to your Knowledge Vault');
+    } catch (error) { toast(error.message || String(error)); }
+  });
+  await restoreWriterState();
+
   /* ───── settings ───── */
   $('#sPart').checked = st.particles; $('#sType').checked = st.typing; $('#sCalm').checked = st.reduceMotion;
   const aiStatus = $('#aiStatus'), aiPrepare = $('#aiPrepare');
@@ -626,12 +828,13 @@
   $('#sCalm').onchange = e => { O.store.saveSettings({ reduceMotion: e.target.checked }); document.documentElement.classList.toggle('calm', e.target.checked); };
   $('#sShort').onclick = () => { const url = (navigator.userAgent.includes('Edg/') ? 'edge' : 'chrome') + '://extensions/shortcuts'; chrome.tabs.create({ url }).catch(() => { $('#sShortMsg').textContent = 'Open ' + url + ' in a new tab.'; }); };
   $('#sClearChat').onclick = () => { $('#clear').click(); toast('Conversation cleared'); };
-  $('#sClearAll').onclick = async () => { if (confirm('Delete ALL ORACLE data (chat, vault, bookmarks, settings)? This can’t be undone.')) { await O.store.clearAll(); location.hash = '#chat'; location.reload(); } };
+  $('#sClearAll').onclick = async () => { if (confirm('Delete ALL ORACLE data (chat, vault, bookmarks, settings)? This can’t be undone.')) { await O.store.clearAll(); await chrome.storage.local.remove(WRITER_KEY); location.hash = '#chat'; location.reload(); } };
 
   /* ───── command palette (Ctrl/Cmd+K) ───── */
   const run = async (m, title) => { show('analyse'); await renderMode(m); };
   const cmds = () => [
-    ...[['chat', 'Chat'], ['analyse', 'Page analysis'], ['text', 'Text assistant'], ['vault', 'Knowledge vault'], ['tools', 'Browser tools'], ['settings', 'Settings']].map(([p, t]) => ({ title: 'Go to ' + t, hint: 'panel', run: () => show(p) })),
+    ...[['chat', 'Chat'], ['analyse', 'Page analysis'], ['text', 'Text assistant'], ['writing', 'Writing assistant'], ['vault', 'Knowledge vault'], ['tools', 'Browser tools'], ['settings', 'Settings']].map(([p, t]) => ({ title: 'Go to ' + t, hint: 'panel', run: () => show(p) })),
+    { title: 'Open writing assistant', hint: 'draft and refine text', run: () => show('writing') },
     { title: 'Analyse page', hint: 'selected page', run: async () => { show('analyse'); try { await analyse(); await renderMode(mode); } catch (e) { fail($('#aOut'), e); } } },
     ...[['quick', 'Quick summary'], ['detailed', 'Detailed summary'], ['keypoints', 'Key points'], ['simple', 'Explain simply'], ['study', 'Study mode'], ['facts', 'Fact extraction'], ['cards', 'Flashcards'], ['quiz', 'Quiz']].map(([m, t]) => ({ title: t, hint: 'analyse page', run: () => run(m) })),
     { title: 'Select duplicate tabs', hint: 'tab manager', run: () => { show('tools'); $('#tbDup').click(); } },

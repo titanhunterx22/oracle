@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.5.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.6.0") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -85,13 +85,19 @@ if (!dashboard.includes("Qwen 2.5 1.5B") || !dashboard.includes("ai-specs")) {
 if (!dashboard.includes('id="researchTabList"') || !dashboard.includes('id="researchRun"') || !dashboard.includes("Cross-tab research")) {
   throw new Error("The Cross-tab Research workspace is missing from the dashboard.");
 }
+if (!dashboard.includes('id="writerDraft"') || !dashboard.includes('id="writerRun"') || !dashboard.includes('id="writerReview"') || !dashboard.includes("Writing studio")) {
+  throw new Error("The Writing Assistant workspace is missing from the dashboard.");
+}
 const styleFiles = files.filter(file => file.endsWith(".css"));
 const styleCode = (await Promise.all(styleFiles.map(file => fs.readFile(file, "utf8")))).join("\\n");
 if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) {
   throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
 }
+if (!styleCode.includes(".writing-layout") || !styleCode.includes("#writerDraft")) {
+  throw new Error("The Writing Assistant visual styles are missing from the build.");
+}
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.5.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.6.0</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("dashboard.")) throw new Error("Dashboard application scripts are missing from the built dashboard.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
 if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {
@@ -110,7 +116,7 @@ if (!allScriptCode.includes("Qwen2.5-1.5B-Instruct-q4f32_1-MLC")) {
 if (!/max_tokens\s*:/.test(allScriptCode) || !allScriptCode.includes("448") || !allScriptCode.includes("384")) {
   throw new Error("The Qwen generation-token budgets for detailed analysis and normal replies are missing from the build.");
 }
-for (const taskPrompt of ["in-depth analytical breakdown", "revision notes", "understanding-focused", "Dictionary or other reference material", "structured website overview", "meaningful keywords and themes", "Compare the two supplied webpages in depth"]) {
+for (const taskPrompt of ["in-depth analytical breakdown", "revision notes", "understanding-focused", "Dictionary or other reference material", "structured website overview", "meaningful keywords and themes", "Compare the two supplied webpages in depth", "expert writing editor", "thoughtful professional editor"]) {
   if (!allScriptCode.includes(taskPrompt)) throw new Error("A required local AI analysis prompt is missing: " + taskPrompt);
 }
 if (!allScriptCode.includes("oracle:ai:request") || !allScriptCode.includes("oracle:ai:offscreen") ||
@@ -131,6 +137,13 @@ if (!allScriptCode.includes("valid external instance reference no longer exists"
 }
 if (!allScriptCode.includes("Relevant saved Knowledge Vault notes")) {
   throw new Error("Local Knowledge Vault retrieval is missing from the AI prompt builder.");
+}
+if (!localAiSource.includes("WRITING_DRAFT_LIMIT") || !localAiSource.includes("writing_review") || !localAiSource.includes("User writing draft")) {
+  throw new Error("Local writing prompts or bounded draft context are missing from the source.");
+}
+const dashboardSource = await fs.readFile(path.resolve("dashboard.js"), "utf8");
+if (!dashboardSource.includes("oracle_writing_workspace_v1") || !dashboardSource.includes("writerDraft") || !dashboardSource.includes("writerReview")) {
+  throw new Error("Local writing draft recovery or dashboard controls are missing from the source.");
 }
 if (!allScriptCode.includes("fab-orbit") || !allScriptCode.includes("Research tab list refreshed")) {
   throw new Error("The refreshed selection orb or cross-tab research controls are missing from the build.");
