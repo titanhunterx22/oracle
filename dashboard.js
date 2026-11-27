@@ -197,6 +197,11 @@
         reference,
         language: $('#tLang').value
       });
+      if (task === 'cards') {
+        const cards = parseGeneratedJSON(answer, 'cards');
+        const valid = (cards || []).filter(card => card && typeof card.q === 'string' && typeof card.a === 'string').slice(0, 10);
+        if (valid.length) { renderCards($('#tOut'), valid); return; }
+      }
       setOut($('#tOut'), answer);
     } catch (error) { fail($('#tOut'), error); }
     finally { b.disabled = false; O.orb.set('idle'); }
@@ -328,8 +333,27 @@
   /* ───── page tools & smart search ───── */
   $$('[data-pt]').forEach(b => b.onclick = async () => {
     const out = $('#ptOut');
-    try { const t = await needTab(); O.orb.set('analysing'); const d = await T.extract(t.id); O.orb.set('idle'); const k = b.dataset.pt; setOut(out, k === 'links' ? E.linksText(d, 300) : k === 'keywords' ? E.keywordsText(d) : k === 'stats' ? E.readingStatsText(d) : k === 'headings' ? E.headingsText(d) : E.overview(d)); }
-    catch (e) { fail(out, e); }
+    try {
+      const t = await needTab();
+      const k = b.dataset.pt;
+      const d = await T.extract(t.id);
+      if (k === 'overview' || k === 'keywords') {
+        O.orb.set('analysing');
+        setOut(out, k === 'overview'
+          ? '_Qwen is examining the purpose, audience and main ideas of this website…_'
+          : '_Qwen is identifying the central topics and themes…_');
+        const result = await O.localAI.askTask(k, {
+          page: d,
+          question: k === 'overview'
+            ? 'Give me a useful, structured overview of this website and explain what the page is trying to communicate.'
+            : 'Find the most important subject keywords and themes in this page. Explain each briefly and group related ideas.'
+        });
+        setOut(out, result);
+      } else {
+        setOut(out, k === 'links' ? E.linksText(d, 300) : k === 'stats' ? E.readingStatsText(d) : E.headingsText(d));
+      }
+    } catch (e) { fail(out, e); }
+    finally { O.orb.set('idle'); }
   });
   const fCnt = r => { $('#fCnt').textContent = r && r.count ? `${r.index + 1} / ${r.count}` : 'No matches'; };
   const doFind = async () => { try { const t = await needTab(); const r = await T.send(t.id, { type: 'oracle:find', term: $('#fQ').value }); fCnt(r); if (r.count) await T.switchTo(t); } catch (e) { $('#fCnt').textContent = e.message; } };
