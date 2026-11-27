@@ -23,18 +23,18 @@
         listTabs: () => O.tools.tabsSummary(),
         async find(term) { const t = await O.tools.targetTab(tabId()); if (!t) throw new Error('No readable tab found.'); const r = await O.tools.send(t.id, { type: 'oracle:find', term }); return r || { count: 0 }; },
         vaultSearch: q => O.store.searchVault(q),
-        async askAI(question, doc, selection) {
-          if (!O.localAI) throw new Error('Local AI is not loaded. Reload the ORACLE extension and try again.');
+        async askAI(question, doc, selection, task, extra) {
+          if (!O.localAI) throw new Error('The shared Local AI bridge did not load. Reload the ORACLE extension and try again.');
           const history = await O.store.conversation();
           if (history.length && history[history.length - 1].role === 'user' && history[history.length - 1].text === question) history.pop();
-          // Retrieve only a couple of relevant saved notes. Everything is read from local extension storage.
           const knowledge = await O.store.searchVault(question).catch(() => []);
-          return O.localAI.ask(question, {
+          const options = Object.assign({
             page: doc || null,
             selection: selection || '',
             history,
             knowledge: Array.isArray(knowledge) ? knowledge.slice(0, 2) : []
-          });
+          }, extra || {});
+          return task ? O.localAI.askTask(task, Object.assign(options, { question })) : O.localAI.ask(question, options);
         },
         vaultDefs: async () => (await O.store.vault()).filter(e => e.type === 'definition'),
         async lookupDefinition(word) {
@@ -51,8 +51,9 @@
           const t = await O.tools.targetTab(tabId()); if (!t) throw new Error('No readable tab found.');
           if (kind === 'bookmark') { await O.tools.bookmarkPage(t.id, 'Read later'); return `Bookmarked **${t.title || t.url}** under “Read later”.`; }
           const doc = await env.getPage();
-          await O.store.addVault({ type: 'summary', title: doc.title, text: O.plain(O.engine.modes.quick(doc)), url: doc.url });
-          return `Saved a quick summary of **${doc.title}** to your Knowledge Vault.`;
+          const summary = await env.askAI('Create a useful summary of this page for my Knowledge Vault.', doc, '', 'quick');
+          await O.store.addVault({ type: 'summary', title: doc.title, text: O.plain(summary), url: doc.url });
+          return `Saved an AI-written summary of **${doc.title}** to your Knowledge Vault.`;
         }
       };
 
@@ -113,15 +114,43 @@
           let res;
           try {
             const intent = O.engine.detect(text.toLowerCase()).id;
-            const useLocalAI = intent === 'none' || intent === 'explain';
-            if (useLocalAI && O.localAI) {
-              let doc = null, selection = '';
-              if (/\b(selected|selection|highlight)\b/i.test(text)) {
-                selection = await env.getSelection().catch(() => '');
-              } else if (/\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text)) {
-                doc = await env.getPage().catch(() => null);
+            const aiTasks = {
+              summarize: 'quick',
+              summarize_detailed: 'detailed',
+              keypoints: 'keypoints',
+              simplify: 'simple',
+              study: 'study',
+              facts: 'facts',
+              flashcards: 'cards',
+              quiz: 'quiz',
+              define: 'define',
+              explain: 'explain'
+            };
+            const task = aiTasks[intent];
+            if ((task || intent === 'none') && O.localAI) {
+              let doc = null, selection = '', extra = {};
+              const asksForSelection = /\b(selected|selection|highlight)\b/i.test(text);
+              const asksAboutPage = /\b(this|current|that|the)\s+(page|article|website|site|post|text|passage|document)\b|\b(on|in|from)\s+(this|the)\s+(page|article|website|site|post)\b/i.test(text);
+              const pageTask = ['quick', 'detailed', 'keypoints', 'study', 'facts', 'cards', 'quiz'].includes(task);
+              if (asksForSelection) selection = await env.getSelection();
+              else if (pageTask || asksAboutPage) doc = await env.getPage();
+              else if (task === 'simple' && ctx.last && /\b(that|this|it|previous|last|above)\b/i.test(text)) selection = O.plain(ctx.last).slice(0, 3200);
+
+              if (task === 'define') {
+                const found = text.match(/(?:define|definition of|meaning of|what does)\s+["“'‘]?([\p{L}][\p{L}'’\-]{0,59})/iu);
+                const word = found ? found[1].toLowerCase() : '';
+                if (word) {
+                  const userDefs = await env.vaultDefs();
+                  let reference = '';
+                  if (O.dictionaryFull) {
+                    const entry = await O.dictionaryFull.lookup(word).catch(() => null);
+                    if (entry) reference = O.dictionaryFull.format(entry);
+                  }
+                  if (!reference) reference = O.engine.defineWord(word, doc, userDefs);
+                  extra.reference = reference;
+                }
               }
-              const answer = await env.askAI(text, doc, selection);
+              const answer = await env.askAI(text, doc, selection, task, extra);
               res = { text: answer, state: 'responding', intent: 'local-ai', suggestions: O.engine.SUG.default };
             } else {
               res = await O.engine.handle(text, env, ctx);
