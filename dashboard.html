@@ -33,7 +33,7 @@
     </section>
 
     <section id="p-analyse" class="panel glass scroll">
-      <div class="section-kicker"><span class="section-symbol">✳</span><div><b>Analysis studio</b><small>Choose a format and turn the active page into useful knowledge.</small></div><span class="section-count">08 FORMATS</span></div>
+      <div class="section-kicker"><span class="section-symbol">✳</span><div><b>AI analysis studio</b><small>Qwen reads the page and creates an original explanation, analysis or study resource.</small></div><span class="section-count">08 FORMATS</span></div>
       <div class="bar"><button class="btn primary" id="analyse">Analyse page</button><div class="tabs" id="modes">
         <button data-m="quick" class="on">Quick summary</button><button data-m="detailed">Detailed</button><button data-m="keypoints">Key points</button><button data-m="simple">Explain simply</button><button data-m="study">Study mode</button><button data-m="facts">Fact extraction</button><button data-m="cards">Flashcards</button><button data-m="quiz">Quiz</button></div></div>
       <div class="stats" id="stats"></div>
@@ -103,7 +103,7 @@
           <div class="bar wrap"><button class="btn" id="sShort">Manage shortcuts</button><span id="sShortMsg" class="mute"></span></div>
         </div>
         <div class="settings-card settings-wide" id="localAiCard">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Give ORACLE a language model for open-ended questions and explanations.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Power page analysis, chat, definitions, study tools and selected-text actions with one shared on-device model.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
           <p>Uses WebLLM to run Qwen 2.5 1.5B Instruct (4-bit) in a dedicated WebGPU worker. The model is tuned for a 2K context to balance stronger answers with integrated-GPU memory. Model files are cached by your browser; prompts and answers stay on this device. An internet connection is needed for the first download. No paid API key or AI server is used.</p>
           <div class="ai-specs" aria-label="Local AI model specifications"><span><b>1.5B</b><small>Parameters</small></span><span><b>Q4F32</b><small>Quantisation</small></span><span><b>2K</b><small>Context</small></span><span><b>LOCAL</b><small>Inference</small></span></div>
           <div class="bar wrap"><button class="btn primary" id="aiPrepare" type="button">Download &amp; prepare Qwen</button><span id="aiStatus" class="mute" role="status" aria-live="polite">Checking WebGPU support…</span></div>
@@ -121,8 +121,8 @@
           <div class="data-actions"><div><b>Your local data</b><small>Clear chat history or remove all saved ORACLE data from this device.</small></div><div class="bar wrap"><button class="btn" id="sClearChat">Clear conversation</button><button class="btn danger" id="sClearAll">Delete all data</button></div></div>
         </div>
         <div class="settings-card settings-wide about-card">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.3.0</b></span></div>
-          <p>ORACLE combines deterministic page tools with optional on-device Local AI. The local model can answer open-ended questions and explain concepts; page summaries, facts, dictionary lookups and study tools continue to use ORACLE’s existing local processing.</p>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.4.0</b></span></div>
+          <p>ORACLE uses one shared on-device Qwen model for generated analysis, explanations, summaries, revision notes, facts, flashcards, quizzes and selected-text tools. Exact browser operations and dictionary retrieval remain local and deterministic, with dictionary entries supplied to the model when a deeper explanation is requested.</p>
         </div>
       </div>
     </section>
