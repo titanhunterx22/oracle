@@ -24,7 +24,7 @@
   <main>
     <div class="workspace-head glass">
       <div class="workspace-title-wrap"><span class="eyebrow"><span class="eyebrow-mark"></span> PRIVATE KNOWLEDGE WORKSPACE</span><h2 id="panelTitle">Chat</h2><p id="panelDescription">Ask questions about the page you have open.</p></div>
-      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.5.0</b></span></div>
+      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.6.0</b></span></div>
     </div>
     <div id="welcome" class="glass banner" hidden><b>ORACLE is installed.</b> Everything runs on this device, with no accounts and no API keys. Open any web page, then use the popup (<kbd>Ctrl+Shift+O</kbd>), the command palette (<kbd>Ctrl+Shift+K</kbd>) or this dashboard. <button class="btn sm" id="welcomeX">Got it</button></div>
 
@@ -171,7 +171,7 @@
           <div class="bar wrap"><button class="btn" id="sShort">Manage shortcuts</button><span id="sShortMsg" class="mute"></span></div>
         </div>
         <div class="settings-card settings-wide" id="localAiCard">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Power page analysis, chat, definitions, study tools and selected-text actions with one shared on-device model.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>Local AI reasoning</h3><p>Power page analysis, chat, writing assistance, definitions, study tools and selected-text actions with one shared on-device model.</p></div><span class="privacy-seal"><i></i> ON DEVICE</span></div>
           <p>Uses WebLLM to run Qwen 2.5 1.5B Instruct (4-bit) in a dedicated WebGPU worker. The model is tuned for a 2K context to balance stronger answers with integrated-GPU memory. Model files are cached by your browser; prompts and answers stay on this device. An internet connection is needed for the first download. No paid API key or AI server is used.</p>
           <div class="ai-specs" aria-label="Local AI model specifications"><span><b>1.5B</b><small>Parameters</small></span><span><b>Q4F32</b><small>Quantisation</small></span><span><b>2K</b><small>Context</small></span><span><b>LOCAL</b><small>Inference</small></span></div>
           <div class="bar wrap"><button class="btn primary" id="aiPrepare" type="button">Download &amp; prepare Qwen</button><span id="aiStatus" class="mute" role="status" aria-live="polite">Checking WebGPU support…</span></div>
@@ -184,13 +184,13 @@
         <div class="settings-card settings-wide">
           <div class="settings-card-head"><span class="settings-icon">ⓘ</span><div><h3>Permissions &amp; data</h3><p>Why access is needed, and how to clear your information.</p></div></div>
           <details class="permission-details"><summary>View permission explanations</summary>
-            <ul class="plain"><li><b>storage</b> — saves your chat, vault, bookmarks and settings locally.</li><li><b>tabs</b> — lists, searches, switches and closes tabs, and finds duplicates. ORACLE reads tab titles and addresses only for this.</li><li><b>activeTab + scripting</b> — lets ORACLE read a tab you had open before installing it, when you click the toolbar icon.</li><li><b>Access to http/https pages (content script)</b> — needed to read page text for analysis, show the selection button and highlight matches. Nothing is sent anywhere.</li></ul>
+            <ul class="plain"><li><b>storage</b> — saves your chat, vault, bookmarks, settings and the writing assistant’s autosaved draft locally.</li><li><b>tabs</b> — lists, searches, switches and closes tabs, and finds duplicates. ORACLE reads tab titles and addresses only for this.</li><li><b>activeTab + scripting</b> — lets ORACLE read a tab you had open before installing it, when you click the toolbar icon.</li><li><b>Access to http/https pages (content script)</b> — needed to read page text for analysis, show the selection button and highlight matches. Nothing is sent anywhere.</li></ul>
           </details>
           <div class="data-actions"><div><b>Your local data</b><small>Clear chat history or remove all saved ORACLE data from this device.</small></div><div class="bar wrap"><button class="btn" id="sClearChat">Clear conversation</button><button class="btn danger" id="sClearAll">Delete all data</button></div></div>
         </div>
         <div class="settings-card settings-wide about-card">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.5.0</b></span></div>
-          <p>ORACLE uses one shared on-device Qwen model for generated analysis, explanations, summaries, revision notes, facts, flashcards, quizzes and selected-text tools. Exact browser operations and dictionary retrieval remain local and deterministic, with dictionary entries supplied to the model when a deeper explanation is requested.</p>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.6.0</b></span></div>
+          <p>ORACLE uses one shared on-device Qwen model for generated analysis, writing assistance, explanations, summaries, revision notes, facts, flashcards, quizzes and selected-text tools. Exact browser operations and dictionary retrieval remain local and deterministic, with dictionary entries supplied to the model when a deeper explanation is requested.</p>
         </div>
       </div>
     </section>
