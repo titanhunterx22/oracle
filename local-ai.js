@@ -288,7 +288,6 @@
     if (researchSources.length) {
       const perSourceLimit = Math.max(650, Math.floor(SOURCE_TEXT_BUDGET / researchSources.length));
       const packedSources = researchSources.map((item, index) => {
-        const rawUrl = String(item && item.url || '').slice(0, 500);
         return {
           id: 'S' + (index + 1),
           title: String(item && item.title || 'Untitled source').slice(0, 200),
