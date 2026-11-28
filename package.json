@@ -1,8 +1,8 @@
 {
   "name": "oracle-browser-extension",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "private": true,
-  "description": "Build ORACLE for Edge and Chrome with local AI, browser tools and OpenVINO-powered local image generation.",
+  "description": "Build ORACLE for Edge and Chrome with local AI, browser tools and a self-contained OpenVINO image-generation companion.",
   "scripts": {
     "build": "parcel build manifest.json dashboard.html ai-offscreen.html --config @parcel/config-webextension --dist-dir dist && node postbuild.mjs",
     "verify": "node verify-build.mjs",
