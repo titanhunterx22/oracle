@@ -1,54 +1,57 @@
-# ORACLE Creative Studio — Windows local image engine
+# ORACLE Creative Studio — self-contained Windows image engine
 
-This companion application connects the ORACLE Manifest V3 extension in Microsoft Edge or Chrome to OpenVINO GenAI running on Windows. OpenVINO does not run inside the Edge extension; the extension calls this local process at http://127.0.0.1:8765.
+This is a **self-contained Windows application** for ORACLE's Creative Studio. It includes a private Python runtime, OpenVINO GenAI, OpenVINO Runtime, OpenVINO Tokenizers, and the required Python packages inside the application folder. **You do not need to install Python, pip, Node.js, or a development environment.**
 
-## Target hardware
+## Hardware and model
 
-The first profile targets Intel integrated graphics, including Intel Iris Xe, with CPU fallback. The initial model is Intel's OpenVINO INT8 conversion of Stable Diffusion 1.5:
-
+- Runtime: OpenVINO GenAI 2026.4.1.0
 - Model: OpenVINO/stable-diffusion-v1-5-int8-ov
-- Runtime: openvino-genai and its Text2ImagePipeline
-- Initial output: 512 × 512, one image per request
+- Model format: Stable Diffusion 1.5, OpenVINO IR, INT8 compressed weights
+- Initial output: 512 × 512, one image per generation
 - Generation steps: 10, 15, 20, 25 or 30
-- Generation progress: the current stable Python API does not expose reliable per-step progress for this pipeline, so the dashboard uses an indeterminate activity indicator until completion.
-- Device selection: first available OpenVINO GPU device, otherwise CPU; if GPU pipeline initialisation fails, retry on CPU.
+- Device selection: first available OpenVINO GPU device (Intel Iris Xe where supported); otherwise CPU. If a GPU pipeline fails during generation, the app retries once on CPU.
 
-OpenVINO's current system requirements list Intel Iris Xe graphics on Windows 10/11. The Windows GPU plugin needs a compatible Intel graphics driver and OpenCL runtime. CPU inference is the fallback if the GPU is absent, cannot initialise, or fails during generation. A GPU generation failure triggers one CPU retry. Update the Intel graphics driver before troubleshooting GPU detection.
+The model weights are about 2.3 GB on Hugging Face and are not bundled in the Windows application. They download only after you choose **Prepare local engine** in ORACLE Creative Studio. The model download needs internet access. Image generation itself is local after setup.
 
-## Installation
+## Install — no Python required
 
-1. Install 64-bit Python 3.11 or 3.12 from https://www.python.org/downloads/windows/. Enable the Python Launcher during setup.
-2. Extract the ORACLE-Creative-Studio-Engine ZIP.
-3. Right-click Install-ORACLE-Creative-Studio.ps1 and choose Run with PowerShell. If Windows blocks it, open PowerShell in the extracted folder and run:
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-ORACLE-Creative-Studio.ps1
-4. Open Start Menu → ORACLE Creative Studio. Keep its PowerShell window open while using image generation.
-5. Open the ORACLE dashboard in Edge → Creative Studio → Prepare local engine. The model downloads only after you click this button. The first setup needs an internet connection and several gigabytes of free disk space.
+1. Download and extract ORACLE-Creative-Studio-Engine.zip completely. Do not run the installer from inside the ZIP preview.
+2. Double-click Install-ORACLE-Creative-Studio.ps1 (or right-click and choose **Run with PowerShell**).
+3. The installer copies the self-contained application to %LOCALAPPDATA%\Programs\ORACLE Creative Studio and adds **ORACLE Creative Studio** to your Windows Start Menu. It does not install Python or alter your PATH.
+4. Open **ORACLE Creative Studio** from the Start Menu. Keep its PowerShell window open while using image generation; close the window or press Ctrl+C to stop the service.
+5. Open the ORACLE dashboard in Microsoft Edge → **Creative Studio** → **Prepare local engine**. The model is downloaded once to %LOCALAPPDATA%\ORACLE\CreativeStudio.
+6. Generate an image. ORACLE tries the Intel GPU first and falls back to CPU if required.
 
-The installer creates an isolated Python environment under %LOCALAPPDATA%\Programs\ORACLE Creative Studio. Model files and generated images are kept under %LOCALAPPDATA%\ORACLE\CreativeStudio. The model is not bundled into the extension or installer.
+## Edge connection and security
 
-## Edge and extension security
+OpenVINO does not run inside Edge. The extension communicates with this bundled Windows application at http://127.0.0.1:8765. The service binds only to IPv4 loopback, validates the request Host and Chromium extension Origin, requires the ORACLE client header, and does not enable wildcard CORS. The extension has a narrowly scoped host permission for this local port. No experimental Edge flags are required.
 
-The extension requests one narrowly scoped host permission for http://127.0.0.1:8765/*. The service binds only to IPv4 loopback, validates the request Host and Chromium extension Origin, requires the ORACLE client header, and does not enable wildcard CORS. It does not listen on your Wi-Fi/LAN interface. Microsoft's Edge Local Network Access rollout exempts extensions with the required host permissions; this is not a normal webpage request and does not require experimental browser flags.
+## Local files
 
-## Privacy
+- Application: %LOCALAPPDATA%\Programs\ORACLE Creative Studio
+- Downloaded model and cache: %LOCALAPPDATA%\ORACLE\CreativeStudio\models
+- Generated images and gallery metadata: %LOCALAPPDATA%\ORACLE\CreativeStudio\gallery
 
-Prompts, negative prompts, generated images and gallery metadata are processed and stored on this computer. Hugging Face is used only to download the publicly hosted model files during setup. No paid image API, ORACLE cloud service, account or telemetry is used.
+Updating the companion replaces only the application folder. It does not delete the separate model or gallery folders.
 
-The model is distributed under the CreativeML Open RAIL-M licence. Review the licence and original model card before use: https://huggingface.co/OpenVINO/stable-diffusion-v1-5-int8-ov.
+## Requirements and limitations
 
-## Limitations
+- Windows 10/11, 64-bit x86.
+- Intel Iris Xe acceleration depends on the installed Intel graphics driver and OpenVINO GPU plugin. If it is unavailable or fails, CPU fallback is used; CPU generation may be slower.
+- The Microsoft Visual C++ 2015–2022 x64 Redistributable may be required by OpenVINO. If the engine fails to start with a missing runtime DLL, install it from https://aka.ms/vs/17/release/vc_redist.x64.exe (administrator approval may be required).
+- This first release supports text-to-image only. Image editing, inpainting, larger resolutions and multiple images per job are not enabled yet.
+- Progress is shown as an activity indicator until generation completes because this pipeline's stable Python API does not expose reliable per-step progress.
 
-- This first release is text-to-image only. Image editing, inpainting, LoRA styles and larger resolutions are not enabled yet.
-- Iris Xe is supported by OpenVINO, but actual speed and memory use vary by driver, laptop cooling and power mode. A successful device enumeration does not guarantee that every pipeline operation will run on the GPU.
-- CPU fallback is slower. If both GPU and CPU pipeline initialisation fail, the service reports the full setup error in Creative Studio.
-- Generation is intentionally single-image and 512 × 512 to keep the initial workload bounded.
+## Model licence
+
+The model is distributed under the CreativeML Open RAIL-M licence. Review its card and licence before use: https://huggingface.co/OpenVINO/stable-diffusion-v1-5-int8-ov.
 
 ## Troubleshooting
 
-- Cannot connect: start the companion from the Windows Start Menu and leave its window open. Check that port 8765 is not blocked or occupied.
-- GPU not listed: update the Intel Iris Xe graphics driver from your laptop manufacturer or Intel. OpenVINO's GPU plugin requires the Windows Intel graphics driver/OpenCL runtime.
-- GPU initialisation failed: ORACLE tries CPU fallback automatically. The status panel reports the device actually selected.
-- Model download interrupted: return to Creative Studio and press Prepare local engine again. Hugging Face snapshot downloads keep already downloaded files in the local cache.
-- Need to stop it: close the companion PowerShell window or press Ctrl+C.
+- **Cannot connect from Edge:** start ORACLE Creative Studio from the Start Menu and keep the window open. Confirm that no other process is using port 8765.
+- **The application does not start:** check whether Windows reports a missing Microsoft Visual C++ runtime DLL. Install the x64 Redistributable from the link above if needed.
+- **GPU not listed:** update the Intel Iris Xe driver from your laptop manufacturer or Intel. CPU fallback remains available.
+- **Model download interrupted:** press Prepare local engine again. The Hugging Face snapshot download reuses existing cached files.
+- **Stop the service:** close its PowerShell window or press Ctrl+C.
 
-This installer has been source-validated and packaged by CI; it still needs a real run on the target laptop to benchmark Iris Xe throughput and confirm the installed driver/runtime combination.
+The Windows application is built and smoke-tested in GitHub Actions. Actual GPU performance still depends on the target laptop's graphics driver.
