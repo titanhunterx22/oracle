@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.8.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.8.1") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -115,7 +115,7 @@ if (!styleCode.includes(".writing-layout") || !styleCode.includes("#writerDraft"
   throw new Error("The Writing Assistant visual styles are missing from the build.");
 }
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.8.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.8.1</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("dashboard.")) throw new Error("Dashboard application scripts are missing from the built dashboard.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
 if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {
@@ -168,6 +168,7 @@ for (const required of ["server.py", "requirements.txt", "README.md", "Install-O
 }
 const companionServer = await fs.readFile(path.join(companionRoot, "server.py"), "utf8");
 if (!companionServer.includes("Text2ImagePipeline") || !companionServer.includes("127.0.0.1") || !companionServer.includes("EXTENSION_ORIGIN") || !companionServer.includes("X-ORACLE-Client")) throw new Error("The local OpenVINO image service or extension-origin protections are missing.");
+if (!companionServer.includes("/api/health") || !companionServer.includes("runtime_ready")) throw new Error("The companion frozen-runtime health endpoint is missing.");
 if (!companionServer.includes('"GPU"') || !companionServer.includes('"CPU"')) throw new Error("The companion must support Intel GPU detection and CPU fallback.");
 
 if (!dashboardSource.includes("oracle_writing_workspace_v1") || !dashboardSource.includes("writerDraft") || !dashboardSource.includes("writerReview")) {
