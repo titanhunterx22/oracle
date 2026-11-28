@@ -10,8 +10,8 @@ if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
 $PythonVersion = $null
 foreach ($Candidate in @("3.11", "3.12")) {
     try {
-        $Probe = & py "-$Candidate" -c "import sys; print(sys.version_info.major, sys.version_info.minor)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $Probe) { $PythonVersion = $Candidate; break }
+        $Probe = & py "-$Candidate" -c "import sys, struct; print(sys.version_info.major, sys.version_info.minor, struct.calcsize('P') * 8)" 2>$null
+        if ($LASTEXITCODE -eq 0 -and $Probe -match "64$") { $PythonVersion = $Candidate; break }
     } catch {}
 }
 if (-not $PythonVersion) {
