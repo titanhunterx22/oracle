@@ -10,6 +10,7 @@ OUTPUT = ROOT / "companion-dist" / "ORACLE-Creative-Studio-Engine.zip"
 ROOT_FILES = [
     "README.md",
     "Install-ORACLE-Creative-Studio.ps1",
+    "Install-ORACLE-Creative-Studio.bat",
     "Start-ORACLE-Creative-Studio.ps1",
 ]
 
