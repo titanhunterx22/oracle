@@ -219,6 +219,7 @@ def main():
     LOCAL_ROOT.mkdir(parents=True,exist_ok=True)
     server = ThreadingHTTPServer((HOST,PORT),Handler)
     server.daemon_threads = True
+    update_state(stage="idle", message="Local service is running. Prepare the image model from ORACLE Creative Studio when you are ready.")
     print("ORACLE Creative Studio local engine is listening on http://" + HOST + ":" + str(PORT),flush=True)
     print("Model and gallery data: " + str(LOCAL_ROOT),flush=True)
     print("Keep this window open while using Creative Studio. Press Ctrl+C to stop.",flush=True)
