@@ -1275,8 +1275,10 @@
     if (data.job && data.job.state === 'running') {
       $('#creativeProgress').hidden = false;
       $('#creativeProgressLabel').textContent = 'Generating on ' + (data.device || 'local device');
-      $('#creativeProgressPercent').textContent = (data.job.progress || 0) + '%';
-      $('#creativeProgressBar').style.width = (data.job.progress || 0) + '%';
+      const hasProgress = Number.isFinite(data.job.progress);
+      $('#creativeProgressPercent').textContent = hasProgress ? data.job.progress + '%' : 'WORKING';
+      $('#creativeProgressBar').style.width = hasProgress ? data.job.progress + '%' : '34%';
+      $('#creativeProgressBar').classList.toggle('indeterminate', !hasProgress);
       $('#creativeProgressDetail').textContent = data.job.message || 'Working locally…';
     }
     return data;
@@ -1433,6 +1435,7 @@
     $('#creativeProgressLabel').textContent = 'Starting local generation…';
     $('#creativeProgressPercent').textContent = '0%';
     $('#creativeProgressBar').style.width = '0%';
+    $('#creativeProgressBar').classList.remove('indeterminate');
     $('#creativeProgressDetail').textContent = 'OpenVINO is preparing the image pipeline.';
     try {
       await creativeApi('/api/generate', { method: 'POST', body: { prompt: prompt, negative_prompt: $('#creativeNegative').value || '', steps: steps } });
