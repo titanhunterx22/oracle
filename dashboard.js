@@ -15,12 +15,13 @@
   $('#sideOrb').innerHTML = O.orb.html(); O.orb.boot(); O.particles.start($('#fx'), st.particles && !st.reduceMotion);
 
   /* ───── navigation ───── */
-  const PANELS = ['chat', 'analyse', 'text', 'writing', 'vault', 'tools', 'settings'];
+  const PANELS = ['chat', 'analyse', 'text', 'writing', 'creative', 'vault', 'tools', 'settings'];
   const PANEL_META = {
     chat: ['Chat', 'Ask questions about the page you have open.'],
     analyse: ['Page analysis', 'Turn the current page into summaries, notes and study material.'],
     text: ['Dictionary & text tools', 'Look up words or work with text you select or paste.'],
     writing: ['Writing assistant', 'Draft, refine, proofread and review your writing with local AI.'],
+    creative: ['Creative Studio', 'Generate images privately with a local OpenVINO image model.'],
     vault: ['Knowledge vault', 'Keep your notes, definitions and saved page summaries together.'],
     tools: ['Browser tools', 'Research across several open pages, manage tabs and compare sources.'],
     settings: ['Settings', 'Control your local experience and privacy preferences.']
@@ -31,7 +32,7 @@
     $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.p === p));
     const meta = PANEL_META[p]; $('#panelTitle').textContent = meta[0]; $('#panelDescription').textContent = meta[1];
     history.replaceState(null, '', location.search + '#' + p);
-    if (p === 'vault') renderVault(); if (p === 'tools') { renderTabs(); renderResearchTabs(); renderBookmarks(); }
+    if (p === 'vault') renderVault(); if (p === 'creative') refreshCreativeStatus().catch(e => creativeSetMessage(e.message || String(e), true)); if (p === 'tools') { renderTabs(); renderResearchTabs(); renderBookmarks(); }
   }
   $$('#nav button').forEach(b => b.onclick = () => show(b.dataset.p));
   const h0 = location.hash.slice(1);
@@ -1216,11 +1217,280 @@
   $('#sClearChat').onclick = () => { $('#clear').click(); toast('Conversation cleared'); };
   $('#sClearAll').onclick = async () => { if (confirm('Delete ALL ORACLE data (chat, vault, bookmarks, settings)? This can’t be undone.')) { await O.store.clearAll(); await chrome.storage.local.remove(WRITER_KEY); location.hash = '#chat'; location.reload(); } };
 
+  /* ───── local OpenVINO Creative Studio ───── */
+  const CREATIVE_BASE = 'http://127.0.0.1:8765';
+  const CREATIVE_CLIENT = 'oracle-creative-studio-v1';
+  let creativeStatus = null, creativeCurrentId = '', creativeCurrentBlob = null, creativeCurrentPrompt = '', creativePreviewUrl = '', creativeGalleryUrls = [];
+  const creativeStyles = {
+    cinematic: 'cinematic composition, atmospheric lighting, rich depth and carefully balanced colour',
+    photographic: 'photorealistic photography, natural detail, realistic lighting and material textures',
+    illustration: 'high-quality digital illustration, deliberate shapes, expressive colour and refined detail',
+    anime: 'anime-inspired illustration, clean linework, expressive character design and polished cel shading',
+    watercolour: 'traditional watercolour painting, delicate pigment washes, textured paper and soft edges',
+    '3d': 'high-quality 3D render, detailed materials, realistic global illumination and refined studio lighting',
+    none: ''
+  };
+  function creativeSetMessage(message, isError) {
+    const node = $('#creativeEngineMessage');
+    if (node) node.textContent = message;
+    const card = $('.creative-engine-card');
+    if (card) card.classList.toggle('is-error', !!isError);
+  }
+  async function creativeApi(path, options) {
+    options = options || {};
+    const headers = Object.assign({ 'X-ORACLE-Client': CREATIVE_CLIENT }, options.headers || {});
+    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+    let response;
+    try {
+      response = await fetch(CREATIVE_BASE + path, {
+        method: options.method || 'GET',
+        headers: headers,
+        body: options.body === undefined ? undefined : JSON.stringify(options.body),
+        cache: 'no-store',
+        credentials: 'omit',
+        mode: 'cors'
+      });
+    } catch (error) {
+      throw new Error('Could not reach the local image engine. Start ORACLE Creative Studio from the Windows Start Menu and keep its window open. ' + (error && error.message ? error.message : ''));
+    }
+    if (options.responseType === 'blob') {
+      if (!response.ok) throw new Error('The local gallery could not return this image (' + response.status + ').');
+      return response.blob();
+    }
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok || data.ok === false) throw new Error(data.error || ('Local image engine returned HTTP ' + response.status + '.'));
+    return data;
+  }
+  function creativeApplyStatus(data) {
+    creativeStatus = data;
+    const message = data.message || 'Local engine status received.';
+    creativeSetMessage(message, data.stage === 'error');
+    const active = !!data.model_ready;
+    $('#creativePrepare').textContent = active ? 'Image engine ready' : data.stage === 'downloading' || data.stage === 'loading' ? 'Preparing…' : 'Prepare local engine';
+    $('#creativePrepare').disabled = active || data.stage === 'downloading' || data.stage === 'loading';
+    $('#creativeGenerate').disabled = !active;
+    $('#creativeEngineDevice').textContent = 'OpenVINO GenAI · ' + (data.device || 'device not selected') + (data.gpu_available ? ' · Intel GPU detected' : ' · CPU fallback available');
+    if (data.job && data.job.state === 'running') {
+      $('#creativeProgress').hidden = false;
+      $('#creativeProgressLabel').textContent = 'Generating on ' + (data.device || 'local device');
+      $('#creativeProgressPercent').textContent = (data.job.progress || 0) + '%';
+      $('#creativeProgressBar').style.width = (data.job.progress || 0) + '%';
+      $('#creativeProgressDetail').textContent = data.job.message || 'Working locally…';
+    }
+    return data;
+  }
+  async function refreshCreativeStatus(loadGallery) {
+    try {
+      const data = await creativeApi('/api/status');
+      creativeApplyStatus(data);
+      if (loadGallery !== false) await creativeRenderGallery();
+      return data;
+    } catch (error) {
+      creativeStatus = null;
+      creativeSetMessage('Local engine not connected. Install the companion app and start it from the Windows Start Menu.', true);
+      $('#creativeEngineDevice').textContent = 'Expected: 127.0.0.1:8765 · Edge extension connection';
+      $('#creativePrepare').disabled = true;
+      $('#creativeGenerate').disabled = true;
+      throw error;
+    }
+  }
+  async function creativeRenderGallery() {
+    const box = $('#creativeGallery');
+    if (!box) return;
+    creativeGalleryUrls.forEach(url => { try { URL.revokeObjectURL(url); } catch (_) {} });
+    creativeGalleryUrls = [];
+    const data = await creativeApi('/api/gallery');
+    box.replaceChildren();
+    if (!data.items || !data.items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'creative-gallery-empty';
+      empty.textContent = 'Your generated images will be saved here on this computer.';
+      box.appendChild(empty);
+      return;
+    }
+    for (const item of data.items) {
+      const card = document.createElement('article');
+      card.className = 'creative-gallery-item';
+      const image = document.createElement('img');
+      image.alt = 'Generated image: ' + (item.prompt || '').slice(0, 100);
+      image.loading = 'lazy';
+      const title = document.createElement('div');
+      title.className = 'creative-gallery-prompt';
+      title.textContent = clipS(item.prompt || 'Untitled image', 110);
+      const meta = document.createElement('small');
+      meta.textContent = (item.width || 512) + ' × ' + (item.height || 512) + ' · ' + (item.device || 'OpenVINO');
+      const actions = document.createElement('div');
+      actions.className = 'creative-gallery-actions';
+      const view = document.createElement('button');
+      view.className = 'btn sm';
+      view.type = 'button';
+      view.textContent = 'View';
+      const reuse = document.createElement('button');
+      reuse.className = 'btn sm';
+      reuse.type = 'button';
+      reuse.textContent = 'Reuse prompt';
+      try {
+        const blob = await creativeApi('/api/image?id=' + encodeURIComponent(item.id), { responseType: 'blob' });
+        const imageUrl = URL.createObjectURL(blob);
+        creativeGalleryUrls.push(imageUrl);
+        image.src = imageUrl;
+        view.onclick = () => creativeShowImage(item, blob);
+      } catch (_) {
+        image.alt = 'Image unavailable';
+      }
+      reuse.onclick = () => {
+        $('#creativePrompt').value = item.prompt || '';
+        creativeUpdatePromptCount();
+        toast('Prompt restored');
+      };
+      actions.append(view, reuse);
+      card.append(image, title, meta, actions);
+      box.appendChild(card);
+    }
+  }
+  function creativeUpdatePromptCount() {
+    $('#creativePromptCount').textContent = ($('#creativePrompt').value || '').length.toLocaleString() + ' / 1,600';
+  }
+  function creativeShowImage(item, blob) {
+    if (creativePreviewUrl) URL.revokeObjectURL(creativePreviewUrl);
+    creativeCurrentBlob = blob;
+    creativeCurrentId = item.id;
+    creativeCurrentPrompt = item.prompt || '';
+    creativePreviewUrl = URL.createObjectURL(blob);
+    $('#creativePreview').src = creativePreviewUrl;
+    $('#creativePreview').hidden = false;
+    $('#creativePreviewEmpty').hidden = true;
+    $('#creativeDownload').disabled = false;
+    $('#creativeUsePrompt').disabled = false;
+    $('#creativeResultMeta').textContent = 'Generated ' + (item.created_at ? new Date(item.created_at).toLocaleString() : 'locally') + ' · ' + (item.device || 'OpenVINO') + ' · ' + (item.steps || 20) + ' steps';
+  }
+  $('#creativePrompt').addEventListener('input', creativeUpdatePromptCount);
+  $('#creativeConnect').onclick = async () => {
+    $('#creativeConnect').disabled = true;
+    try { await refreshCreativeStatus(true); toast('Local image engine connected'); }
+    catch (error) { toast(error.message); }
+    finally { $('#creativeConnect').disabled = false; }
+  };
+  $('#creativeGalleryRefresh').onclick = async () => {
+    try { await creativeRenderGallery(); toast('Gallery refreshed'); }
+    catch (error) { toast(error.message); }
+  };
+  $('#creativePrepare').onclick = async () => {
+    $('#creativePrepare').disabled = true;
+    creativeSetMessage('Starting local model setup…', false);
+    try {
+      await creativeApi('/api/setup', { method: 'POST', body: {} });
+      for (let attempt = 0; attempt < 1800; attempt++) {
+        await sleep(1500);
+        const data = await creativeApi('/api/status');
+        creativeApplyStatus(data);
+        if (data.stage === 'ready') {
+          await creativeRenderGallery();
+          toast('Local image engine is ready');
+          return;
+        }
+        if (data.stage === 'error') throw new Error(data.message || 'Image engine setup failed.');
+      }
+      throw new Error('Model setup is still running. Check the local engine window and reconnect later.');
+    } catch (error) {
+      creativeSetMessage(error.message || String(error), true);
+      toast(error.message || String(error));
+    } finally {
+      const data = await creativeApi('/api/status').catch(() => null);
+      if (data) creativeApplyStatus(data);
+      else $('#creativePrepare').disabled = false;
+    }
+  };
+  $('#creativeImprove').onclick = async () => {
+    const prompt = ($('#creativePrompt').value || '').trim();
+    if (!prompt) { toast('Write a prompt first'); return; }
+    if (!O.localAI) { toast('ORACLE local Qwen is unavailable. Reload the dashboard.'); return; }
+    $('#creativeImprove').disabled = true;
+    const original = prompt;
+    try {
+      const improved = await O.localAI.askTask('image_prompt', {
+        draft: prompt,
+        question: 'Rewrite this as one detailed, coherent text-to-image prompt. Add useful visual specifics about subject, composition, camera or viewpoint, lighting, colour, materials and atmosphere where appropriate. Preserve the user’s idea; do not add text, logos or watermarks unless requested. Return only the improved prompt.'
+      });
+      if (original !== $('#creativePrompt').value.trim()) throw new Error('Your prompt changed while Qwen was working. The edited result was not applied.');
+      $('#creativePrompt').value = improved.trim().replace(/^["']|["']$/g, '').slice(0, 1600);
+      creativeUpdatePromptCount();
+      toast('Prompt improved with local Qwen');
+    } catch (error) {
+      toast(error.message || String(error));
+    } finally { $('#creativeImprove').disabled = false; }
+  };
+  $('#creativeGenerate').onclick = async () => {
+    const original = ($('#creativePrompt').value || '').trim();
+    if (!original) { toast('Describe the image you want to create first'); return; }
+    const style = creativeStyles[$('#creativeStyle').value] || '';
+    const prompt = style && $('#creativeStyle').value !== 'none' ? original + ', ' + style : original;
+    const steps = Number($('#creativeSteps').value) || 20;
+    $('#creativeGenerate').disabled = true;
+    $('#creativeProgress').hidden = false;
+    $('#creativeProgressLabel').textContent = 'Starting local generation…';
+    $('#creativeProgressPercent').textContent = '0%';
+    $('#creativeProgressBar').style.width = '0%';
+    $('#creativeProgressDetail').textContent = 'OpenVINO is preparing the image pipeline.';
+    try {
+      await creativeApi('/api/generate', { method: 'POST', body: { prompt: prompt, negative_prompt: $('#creativeNegative').value || '', steps: steps } });
+      let finished = false;
+      for (let attempt = 0; attempt < 2400; attempt++) {
+        await sleep(1500);
+        const data = await creativeApi('/api/status', { });
+        creativeApplyStatus(data);
+        const job = data.job;
+        if (!job || (job.state !== 'running' && job.state !== 'complete')) {
+          if (job && job.state === 'error') throw new Error(job.message || 'Image generation failed.');
+          if (job && job.message) throw new Error(job.message);
+        }
+        if (job && job.state === 'complete') {
+          const blob = await creativeApi('/api/image?id=' + encodeURIComponent(job.image_id), { responseType: 'blob' });
+          creativeShowImage({ id: job.image_id, prompt: prompt, device: data.device, steps: steps, created_at: new Date().toISOString() }, blob);
+          await creativeRenderGallery();
+          $('#creativeProgressLabel').textContent = 'Image generated';
+          $('#creativeProgressDetail').textContent = 'Saved to your local ORACLE gallery.';
+          toast('Image generated successfully');
+          finished = true;
+          break;
+        }
+        if (job && job.state === 'error') throw new Error(job.message || 'Image generation failed.');
+      }
+      if (!finished) throw new Error('Generation is taking longer than expected. Check the local engine window before retrying.');
+    } catch (error) {
+      $('#creativeProgressLabel').textContent = 'Generation stopped';
+      $('#creativeProgressDetail').textContent = error.message || String(error);
+      toast(error.message || String(error));
+    } finally {
+      const data = await creativeApi('/api/status').catch(() => null);
+      if (data) creativeApplyStatus(data);
+    }
+  };
+  $('#creativeDownload').onclick = () => {
+    if (!creativeCurrentBlob) return;
+    const url = URL.createObjectURL(creativeCurrentBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'oracle-creative-' + (creativeCurrentId || Date.now()) + '.png';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  };
+  $('#creativeUsePrompt').onclick = () => {
+    if (!creativeCurrentPrompt) return;
+    $('#creativePrompt').value = creativeCurrentPrompt;
+    creativeUpdatePromptCount();
+    toast('Prompt restored from the selected image');
+  };
+
   /* ───── command palette (Ctrl/Cmd+K) ───── */
   const run = async (m, title) => { show('analyse'); await renderMode(m); };
   const cmds = () => [
-    ...[['chat', 'Chat'], ['analyse', 'Page analysis'], ['text', 'Text assistant'], ['writing', 'Writing assistant'], ['vault', 'Knowledge vault'], ['tools', 'Browser tools'], ['settings', 'Settings']].map(([p, t]) => ({ title: 'Go to ' + t, hint: 'panel', run: () => show(p) })),
+    ...[['chat', 'Chat'], ['analyse', 'Page analysis'], ['text', 'Text assistant'], ['writing', 'Writing assistant'], ['creative', 'Creative Studio'], ['vault', 'Knowledge vault'], ['tools', 'Browser tools'], ['settings', 'Settings']].map(([p, t]) => ({ title: 'Go to ' + t, hint: 'panel', run: () => show(p) })),
     { title: 'Open writing assistant', hint: 'draft and refine text', run: () => show('writing') },
+    { title: 'Open Creative Studio', hint: 'generate an image locally', run: () => show('creative') },
     { title: 'Analyse page', hint: 'selected page', run: async () => { show('analyse'); try { await analyse(); await renderMode(mode); } catch (e) { fail($('#aOut'), e); } } },
     ...[['quick', 'Quick summary'], ['detailed', 'Detailed summary'], ['keypoints', 'Key points'], ['simple', 'Explain simply'], ['study', 'Study mode'], ['facts', 'Fact extraction'], ['cards', 'Flashcards'], ['quiz', 'Quiz']].map(([m, t]) => ({ title: t, hint: 'analyse page', run: () => run(m) })),
     { title: 'Select duplicate tabs', hint: 'tab manager', run: () => { show('tools'); $('#tbDup').click(); } },
