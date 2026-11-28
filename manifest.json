@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ORACLE",
-  "version": "1.7.0",
-  "description": "A private browser companion with local AI, study tools, offline dictionary and smart tab organisation.",
+  "version": "1.8.0",
+  "description": "A private browser companion with local AI, offline dictionary, browser tools and local image generation.",
   "minimum_chrome_version": "113",
   "icons": {
     "16": "icon16.png",
@@ -64,7 +64,7 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co https://hf.co https://*.hf.co https://cas-server.xethub-eu.hf.co https://transfer.xethub-eu.hf.co https://us.aws.cdn.hf.co https://us.gcp.cdn.hf.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; worker-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://raw.githubusercontent.com https://*.xethub.hf.co https://hf.co https://*.hf.co https://cas-server.xethub-eu.hf.co https://transfer.xethub-eu.hf.co https://us.aws.cdn.hf.co https://us.gcp.cdn.hf.co https://cdn-lfs-us-1.hf.co https://cdn-lfs-eu-1.hf.co; connect-src 'self' http://127.0.0.1:8765; img-src 'self' data: blob:"
   },
   "host_permissions": [
     "https://en-word.net/*",
@@ -79,7 +79,8 @@
     "https://us.aws.cdn.hf.co/*",
     "https://us.gcp.cdn.hf.co/*",
     "https://cdn-lfs-us-1.hf.co/*",
-    "https://cdn-lfs-eu-1.hf.co/*"
+    "https://cdn-lfs-eu-1.hf.co/*",
+    "http://127.0.0.1:8765/*"
   ],
   "web_accessible_resources": [
     {
