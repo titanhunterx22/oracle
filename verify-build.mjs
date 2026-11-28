@@ -163,7 +163,7 @@ const dashboardSource = await fs.readFile(path.resolve("dashboard.js"), "utf8");
 if (!dashboardSource.includes("127.0.0.1:8765") || !dashboardSource.includes("creativeImprove") || !dashboardSource.includes("creativeRenderGallery")) throw new Error("The dashboard is missing its local image-engine bridge or prompt/gallery controls.");
 if (!localAiSource.includes("image_prompt:") || !dashboardSource.includes("askTask('image_prompt'")) throw new Error("Local Qwen image-prompt enhancement is missing.");
 const companionRoot = path.resolve("companion/image-engine");
-for (const required of ["server.py", "requirements.txt", "README.md", "Install-ORACLE-Creative-Studio.ps1", "Start-ORACLE-Creative-Studio.ps1"]) {
+for (const required of ["server.py", "requirements.txt", "README.md", "Install-ORACLE-Creative-Studio.ps1", "Install-ORACLE-Creative-Studio.bat", "Start-ORACLE-Creative-Studio.ps1"]) {
   try { await fs.access(path.join(companionRoot, required)); } catch { throw new Error("Creative Studio companion file is missing: " + required); }
 }
 const companionServer = await fs.readFile(path.join(companionRoot, "server.py"), "utf8");
