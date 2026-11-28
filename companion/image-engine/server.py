@@ -207,6 +207,26 @@ class Handler(BaseHTTPRequestHandler):
         if not origin: return
         parsed = urlsplit(self.path)
         query = parse_qs(parsed.query)
+        if parsed.path == "/api/health":
+            try:
+                import openvino as ov
+                import openvino_genai as ov_genai
+                devices = list(ov.Core().available_devices)
+                self._json(200, {
+                    "ok": True,
+                    "runtime_ready": True,
+                    "openvino_version": getattr(ov, "__version__", "available"),
+                    "genai_available": ov_genai is not None,
+                    "devices": devices,
+                    "gpu_available": any(str(device).upper().startswith("GPU") for device in devices),
+                }, origin)
+            except Exception as error:
+                self._json(503, {
+                    "ok": False,
+                    "runtime_ready": False,
+                    "error": "The bundled OpenVINO runtime could not initialise: " + str(error)[:900],
+                }, origin)
+            return
         if parsed.path == "/api/status":
             self._json(200,{"ok":True,**status_snapshot()},origin)
             return
