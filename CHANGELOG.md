@@ -1,3 +1,11 @@
+# ORACLE 1.7.0
+
+- Upgraded the basic tab list into a Smart Tab Manager with live tab counts, search, filters and sorting across browser windows.
+- Added deterministic topic grouping and selected-tab grouping by website using native Chromium Tab Groups, while preserving existing groups and pinned tabs during automatic organisation.
+- Added per-tab switch, pin/unpin, mute/unmute, duplicate and close actions, plus safe duplicate selection that protects active and pinned copies.
+- Added named local workspaces that save the current window's webpages and restore only missing URLs; workspace data remains in browser-local storage.
+- Added tab lifecycle refresh handling, responsive management controls and build checks for the Tab Groups permission and workspace/grouping logic.
+
 # ORACLE 1.6.0
 
 - Added a dedicated local Writing Assistant workspace with proofread, rewrite, clarity, shorten, expand, continue, email and academic editing workflows.

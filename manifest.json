@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ORACLE",
-  "version": "1.6.0",
-  "description": "A private browser companion with AI-powered local analysis, study tools and offline dictionary. No paid API keys or AI servers.",
+  "version": "1.7.0",
+  "description": "A private browser companion with local AI, study tools, offline dictionary and smart tab organisation.",
   "minimum_chrome_version": "113",
   "icons": {
     "16": "icon16.png",
@@ -24,6 +24,7 @@
   "permissions": [
     "storage",
     "tabs",
+    "tabGroups",
     "scripting",
     "activeTab",
     "offscreen"

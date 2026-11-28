@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.6.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.7.0") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -43,6 +43,7 @@ if (!exists("ai-offscreen.html")) throw new Error("Build output is missing the s
 if (!files.some(file => path.basename(file).startsWith("ai-offscreen.") && file.endsWith(".js"))) throw new Error("Build output is missing the bundled offscreen local AI scripts.");
 if (!files.some(file => path.basename(file).startsWith("local-ai-bridge.") && file.endsWith(".js"))) throw new Error("Build output is missing the bundled shared local AI bridge.");
 if (!(manifest.permissions || []).includes("offscreen")) throw new Error("The offscreen permission is required for shared page and dashboard inference.");
+if (!(manifest.permissions || []).includes("tabGroups")) throw new Error("The tabGroups permission is required for Smart Tab Manager grouping.");
 const serviceWorkerPath = manifest.background && manifest.background.service_worker;
 if (!serviceWorkerPath || !exists(serviceWorkerPath)) throw new Error("Manifest service worker is missing from the build: " + serviceWorkerPath);
 const csp = manifest.content_security_policy && manifest.content_security_policy.extension_pages || "";
@@ -82,6 +83,13 @@ if (!dashboard.includes("aiPrepare") || !dashboard.includes("aiStatus")) throw n
 if (!dashboard.includes("Qwen 2.5 1.5B") || !dashboard.includes("ai-specs")) {
   throw new Error("The Qwen model description/specifications are missing from the dashboard.");
 }
+if (!dashboard.includes('id="tbSmartOrganise"') || !dashboard.includes('id="tbWorkspaces"') || !dashboard.includes('id="tbWorkspaceRestore"') || !dashboard.includes("Smart tab manager")) {
+  throw new Error("The Smart Tab Manager UI is missing from the dashboard.");
+}
+const dashboardSourceForTabs = await fs.readFile(path.resolve("dashboard.js"), "utf8");
+if (!dashboardSourceForTabs.includes("oracle_tab_workspaces_v1") || !dashboardSourceForTabs.includes("function topicForTab") || !dashboardSourceForTabs.includes("chrome.tabs.group") || !dashboardSourceForTabs.includes("chrome.tabs.ungroup")) {
+  throw new Error("Smart Tab Manager organisation, grouping or local workspace logic is missing.");
+}
 if (!dashboard.includes('id="researchTabList"') || !dashboard.includes('id="researchRun"') || !dashboard.includes("Cross-tab research")) {
   throw new Error("The Cross-tab Research workspace is missing from the dashboard.");
 }
@@ -97,7 +105,7 @@ if (!styleCode.includes(".writing-layout") || !styleCode.includes("#writerDraft"
   throw new Error("The Writing Assistant visual styles are missing from the build.");
 }
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.6.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.7.0</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("dashboard.")) throw new Error("Dashboard application scripts are missing from the built dashboard.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
 if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {

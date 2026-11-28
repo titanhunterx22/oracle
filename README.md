@@ -1,6 +1,6 @@
 # ORACLE — private Chromium browser companion
 
-ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. It uses **Qwen 2.5 1.5B Instruct running locally with WebLLM + WebGPU** for page analysis, in-depth explanations, summaries, fact analysis, revision notes, flashcards, quizzes, definitions, selected-text tools and open-ended chat. The offline dictionary and exact browser operations remain local data tools. There are no paid API keys, accounts, analytics or ORACLE AI servers.
+ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. It uses **Qwen 2.5 1.5B Instruct running locally with WebLLM + WebGPU** for page analysis, in-depth explanations, summaries, fact analysis, revision notes, flashcards, quizzes, definitions, selected-text tools and open-ended chat. Its Smart Tab Manager groups tabs by topic or website, detects duplicate pages, filters and sorts open tabs, and saves/restores local browser workspaces. The offline dictionary and exact browser operations remain local data tools. There are no paid API keys, accounts, analytics or ORACLE AI servers.
 
 ## Install the ready-built extension (recommended)
 
@@ -24,6 +24,13 @@ npm run build:check
 
 Then load the generated `dist` folder through `edge://extensions` or `chrome://extensions` → **Load unpacked**. The build uses Parcel's WebExtension configuration to bundle the WebLLM runtime and dedicated worker inside the extension, as required by Manifest V3's extension-page security policy.
 
+
+### Smart Tab Manager
+
+Open Dashboard → **Browser tools**. Search tab titles and URLs, filter by window, duplicate, pinned or recently used tabs, and sort by recent activity, title, website or window order. ORACLE can group ungrouped tabs into deterministic topic groups or group selected tabs by website. Existing user-created groups and pinned tabs are deliberately left alone by automatic organisation. Individual tabs can be switched to, pinned/unpinned, muted/unmuted, duplicated or closed; selected tabs can be ungrouped or closed.
+
+Save the normal webpages in the current window as a named workspace, then restore it later. Restore opens only pages that are not already present in that window. Workspace names and URLs are saved in `chrome.storage.local` on this device; they are not uploaded or included in AI prompts. Browser tab grouping uses Chromium's built-in Tab Groups API and the `tabGroups` permission. The manager only lists normal HTTP/HTTPS pages; browser-internal and extension pages are intentionally excluded.
+
 ## Expanded offline dictionary
 
 The extension build downloads the official Open English WordNet 2025+ JSON release, verifies its published SHA-256 checksum, and generates compressed alphabet shards under `dist/dictionary-data/`. A network connection is needed when building the extension; dictionary lookups are then fully offline. The source archive is not included in the installed extension.
@@ -41,6 +48,7 @@ The expanded data is based on [Open English WordNet 2025+](https://github.com/gl
 | Local AI setup | Dashboard → **Settings** → **Local AI reasoning** → **Download & prepare model** |
 | Offline dictionary | Dashboard → **Text assistant**, or ask `Define <word>` |
 | Writing assistant | Dashboard → **Writing assistant** |
+| Smart Tab Manager | Dashboard → **Browser tools** → **Smart tab manager** |
 
 The Writing assistant provides proofread, rewrite, clarity, shorten, expand, continue, email and academic-polish workflows, with tone, audience, format and optional instructions. **Review draft** produces constructive editorial feedback separately from the edited text. Page selections and readable page text can be inserted into the editor. The working draft and editor settings autosave to `chrome.storage.local` on this device. Generated results are shown separately; **Use result as draft** is an explicit action and the previous draft can be restored. Results can be copied or saved to the Knowledge Vault. Drafts and prompts are passed to the existing local Qwen model and are not sent to an ORACLE server.
 | Change keyboard shortcuts | `edge://extensions/shortcuts` or `chrome://extensions/shortcuts` |

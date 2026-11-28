@@ -210,3 +210,45 @@ details.add,.permission-details{border:1px solid rgba(153,174,211,.14);border-ra
 .writing-result-actions .btn:disabled{opacity:.42;cursor:not-allowed}
 @media(max-width:860px){.writing-layout{grid-template-columns:1fr}#writerDraft{min-height:260px}}
 @media(max-width:600px){.writing-intro{flex-direction:column}.writing-card-head{align-items:flex-start;flex-direction:column}.writer-save-state{align-items:flex-start;flex-direction:column}.writer-actions .btn{flex:1 1 100%}.writer-result-actions .btn{flex:1}}
+
+
+/* Smart tab manager */
+.tab-manager-card{grid-column:1/-1}
+.tab-manager-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:13px}
+.tab-manager-heading h3{margin:0}
+.tab-manager-heading p{margin:5px 0 0;max-width:680px;color:#8d9cb7;font-size:10px;line-height:1.6}
+.tab-manager-heading .privacy-seal{flex:none}
+.tab-manager-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}
+.tab-manager-stat{display:flex;flex-direction:column;gap:4px;min-width:0;padding:11px 13px;border:1px solid rgba(151,171,207,.13);border-radius:12px;background:linear-gradient(135deg,rgba(39,48,83,.42),rgba(12,24,42,.58))}
+.tab-manager-stat b{color:#eef2ff;font-size:21px;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.tab-manager-stat span{color:#8798b4;font-size:9px}
+.tab-manager-controls{display:grid;gap:9px;margin:10px 0}
+.tab-manager-controls input,.tab-manager-controls select{min-width:0}
+.tab-manager-actions{align-items:center}
+.tab-manager-actions .btn:disabled{opacity:.38;cursor:not-allowed}
+#tbSelectedCount{margin-left:auto}
+.tab-workspace-tools{display:grid;grid-template-columns:minmax(145px,.55fr) minmax(0,2fr);gap:12px;align-items:center;padding:11px 13px;border:1px solid rgba(151,171,207,.12);border-radius:12px;background:rgba(9,18,34,.42)}
+.tab-workspace-label b,.tab-workspace-label small{display:block}
+.tab-workspace-label b{color:#cbd6eb;font-size:10px}
+.tab-workspace-label small{margin-top:3px;color:#788aa7;font-size:9px;line-height:1.5}
+.tab-workspace-controls{min-width:0}
+.tab-workspace-controls input,.tab-workspace-controls select{min-width:0}
+.tab-manager-status{margin:6px 0 10px;padding:8px 10px;border-left:2px solid rgba(130,111,233,.6);border-radius:0 8px 8px 0;background:rgba(105,89,190,.07);color:#9ba9c2;font-size:9px;line-height:1.55}
+.tab-manager-status.error{border-color:rgba(244,114,114,.7);background:rgba(180,65,65,.08);color:#f2aaaa}
+.tab-manager-list{max-height:640px;overflow:auto;padding:1px}
+.tab-manager-window-heading{position:sticky;top:0;z-index:2;margin:7px 0 2px;padding:7px 10px;border:1px solid rgba(151,171,207,.1);border-radius:8px;background:rgba(12,21,38,.96);color:#a9b8d1;font-size:9px;font-weight:850;letter-spacing:.11em;text-transform:uppercase;backdrop-filter:blur(12px)}
+.tab-manager-item{display:grid;grid-template-columns:18px minmax(120px,1fr) auto;align-items:center;gap:11px;padding:10px 11px}
+.tab-manager-item.is-active{border-color:rgba(137,120,255,.4);background:linear-gradient(100deg,rgba(107,86,194,.12),rgba(8,18,34,.58))}
+.tab-manager-check{width:15px;height:15px;accent-color:#9a88f5;cursor:pointer}
+.tab-manager-main{min-width:0}
+.tab-manager-title{overflow:hidden;color:#e2eafd;font-size:11px;font-weight:750;text-overflow:ellipsis;white-space:nowrap}
+.tab-manager-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;color:#8192ac;font-size:9px;overflow-wrap:anywhere}
+.tab-manager-badges{display:inline-flex;gap:4px;flex-wrap:wrap}
+.tab-manager-badges .badge{padding:2px 5px;font-size:8px}
+.tab-badge-active{color:#91ddc4!important;border-color:rgba(91,198,160,.28)!important;background:rgba(50,155,132,.1)!important}
+.tab-badge-duplicate{color:#f4cf81!important;border-color:rgba(250,204,21,.25)!important;background:rgba(177,136,37,.1)!important}
+.tab-badge-group{color:#c7baff!important}
+.tab-manager-row-actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.tab-manager-row-actions .btn{padding:5px 7px;font-size:9px}
+@media(max-width:1050px){.tab-manager-item{grid-template-columns:18px minmax(0,1fr)}.tab-manager-row-actions{grid-column:2;justify-content:flex-start}}
+@media(max-width:720px){.tab-manager-overview{grid-template-columns:repeat(2,minmax(0,1fr))}.tab-manager-heading{flex-direction:column}.tab-workspace-tools{grid-template-columns:1fr}.tab-manager-list{max-height:560px}.tab-manager-item{grid-template-columns:17px minmax(0,1fr);gap:8px}.tab-manager-row-actions .btn{flex:1 1 auto}.tab-manager-row-actions{grid-column:1/-1}}
