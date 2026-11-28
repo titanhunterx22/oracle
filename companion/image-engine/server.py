@@ -83,25 +83,81 @@ def setup_worker():
         _setup_lock.release()
 
 def generate_worker(job_id, prompt, negative_prompt, steps):
+    global _pipeline
     try:
         from PIL import Image
-        def on_step(step, total_steps, _latent):
-            percent = int(((step + 1) / max(1, total_steps)) * 100)
-            update_state(job={"id":job_id,"state":"running","progress":min(99,percent),"message":"Generating image · step " + str(step + 1) + " of " + str(total_steps)})
-            return False
-        kwargs = {"width":512,"height":512,"num_inference_steps":steps,"num_images_per_prompt":1,"callback":on_step}
+
+        kwargs = {
+            "width": 512,
+            "height": 512,
+            "num_inference_steps": steps,
+            "num_images_per_prompt": 1,
+        }
         if negative_prompt.strip():
             kwargs["negative_prompt"] = negative_prompt.strip()
-        result = _pipeline.generate(prompt, **kwargs)
+
+        update_state(job={
+            "id": job_id,
+            "state": "running",
+            "progress": None,
+            "message": "OpenVINO is generating your image locally. This model does not expose per-step progress through the stable Python generate API.",
+        })
+
+        try:
+            result = _pipeline.generate(prompt, **kwargs)
+        except Exception as gpu_error:
+            active_device = str(status_snapshot().get("device") or "CPU")
+            if not active_device.upper().startswith("GPU"):
+                raise
+            update_state(job={
+                "id": job_id,
+                "state": "running",
+                "progress": None,
+                "message": "Intel GPU generation failed. Reinitialising the pipeline on CPU and retrying once…",
+            })
+            import openvino_genai as ov_genai
+            _pipeline = ov_genai.Text2ImagePipeline(str(MODEL_DIR), "CPU")
+            update_state(device="CPU", job={
+                "id": job_id,
+                "state": "running",
+                "progress": None,
+                "message": "Retrying generation on CPU after an Intel GPU error: " + str(gpu_error)[:300],
+            })
+            result = _pipeline.generate(prompt, **kwargs)
+
         image = Image.fromarray(result.data[0])
         image_id = uuid.uuid4().hex
         image_path = GALLERY_DIR / (image_id + ".png")
         image.save(image_path, format="PNG", optimize=True)
-        metadata = {"id":image_id,"prompt":prompt,"negative_prompt":negative_prompt,"width":512,"height":512,"steps":steps,"device":status_snapshot().get("device") or "unknown","created_at":datetime.now(timezone.utc).isoformat(),"filename":image_path.name}
-        (GALLERY_DIR / (image_id + ".json")).write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding="utf-8")
-        update_state(job={"id":job_id,"state":"complete","progress":100,"message":"Image generated and saved to your local gallery.","image_id":image_id})
+        metadata = {
+            "id": image_id,
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "width": 512,
+            "height": 512,
+            "steps": steps,
+            "device": status_snapshot().get("device") or "unknown",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "filename": image_path.name,
+        }
+        (GALLERY_DIR / (image_id + ".json")).write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        update_state(job={
+            "id": job_id,
+            "state": "complete",
+            "progress": 100,
+            "message": "Image generated and saved to your local gallery.",
+            "image_id": image_id,
+        })
     except Exception as error:
-        update_state(job={"id":job_id,"state":"error","progress":0,"message":"Generation failed: " + str(error)[:900]})
+        update_state(job={
+            "id": job_id,
+            "state": "error",
+            "progress": 0,
+            "message": "Generation failed: " + str(error)[:900],
+        })
     finally:
         _generation_lock.release()
 
