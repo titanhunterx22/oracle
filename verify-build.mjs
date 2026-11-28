@@ -47,6 +47,9 @@ if (!(manifest.permissions || []).includes("tabGroups")) throw new Error("The ta
 const serviceWorkerPath = manifest.background && manifest.background.service_worker;
 if (!serviceWorkerPath || !exists(serviceWorkerPath)) throw new Error("Manifest service worker is missing from the build: " + serviceWorkerPath);
 const csp = manifest.content_security_policy && manifest.content_security_policy.extension_pages || "";
+const connectDirectives = csp.split(";").map(value => value.trim()).filter(value => value.startsWith("connect-src "));
+if (connectDirectives.length !== 1 || !connectDirectives[0].includes("http://127.0.0.1:8765")) throw new Error("The localhost endpoint must be part of the single effective connect-src directive.");
+
 for (const token of ["wasm-unsafe-eval", "huggingface.co", "raw.githubusercontent.com"]) {
   if (!csp.includes(token)) throw new Error("Extension CSP is missing " + token);
 }
