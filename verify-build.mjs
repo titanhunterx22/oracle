@@ -19,7 +19,7 @@ const exists = file => files.includes(path.resolve(root, file));
 if (!exists("manifest.json")) throw new Error("Build output is missing manifest.json");
 const manifest = JSON.parse(await fs.readFile(path.join(root, "manifest.json"), "utf8"));
 if (manifest.manifest_version !== 3) throw new Error("Expected a Manifest V3 extension.");
-if (manifest.version !== "1.7.0") throw new Error("Unexpected extension version: " + manifest.version);
+if (manifest.version !== "1.8.0") throw new Error("Unexpected extension version: " + manifest.version);
 const dictionaryMetaPath = path.join(root, "dictionary-data", "metadata.json");
 let dictionaryMeta;
 try { dictionaryMeta = JSON.parse(await fs.readFile(dictionaryMetaPath, "utf8")); }
@@ -47,6 +47,9 @@ if (!(manifest.permissions || []).includes("tabGroups")) throw new Error("The ta
 const serviceWorkerPath = manifest.background && manifest.background.service_worker;
 if (!serviceWorkerPath || !exists(serviceWorkerPath)) throw new Error("Manifest service worker is missing from the build: " + serviceWorkerPath);
 const csp = manifest.content_security_policy && manifest.content_security_policy.extension_pages || "";
+const connectDirectives = csp.split(";").map(value => value.trim()).filter(value => value.startsWith("connect-src "));
+if (connectDirectives.length !== 1 || !connectDirectives[0].includes("http://127.0.0.1:8765")) throw new Error("The localhost endpoint must be part of the single effective connect-src directive.");
+
 for (const token of ["wasm-unsafe-eval", "huggingface.co", "raw.githubusercontent.com"]) {
   if (!csp.includes(token)) throw new Error("Extension CSP is missing " + token);
 }
@@ -66,6 +69,10 @@ if (fullDictionaryIndex < 0 || engineIndex < 0 || fullDictionaryIndex > engineIn
   throw new Error("The offline dictionary loader must run before the engine in content scripts.");
 }
 const hostPermissions = manifest.host_permissions || [];
+if (!hostPermissions.includes("http://127.0.0.1:8765/*")) throw new Error("The localhost permission for the ORACLE Creative Studio companion is missing.");
+if (!csp.includes("connect-src") || !csp.includes("http://127.0.0.1:8765") || !csp.includes("img-src") || !csp.includes("blob:")) throw new Error("The extension CSP does not allow the local Creative Studio bridge and preview images.");
+if (csp.includes("worker-src blob:")) throw new Error("Do not reintroduce blob: workers; Edge previously rejected that extension CSP.");
+
 if (!hostPermissions.some(origin => origin.includes("huggingface.co")) || !hostPermissions.some(origin => origin.includes("raw.githubusercontent.com"))) {
   throw new Error("Model download host permissions are missing.");
 }
@@ -76,6 +83,8 @@ for (const requiredHost of ["https://hf.co/*", "https://*.hf.co/*", "https://cdn
   if (!hostPermissions.includes(requiredHost)) throw new Error("Extension host permissions are missing Hugging Face CDN access: " + requiredHost);
 }
 const dashboard = await fs.readFile(path.join(root, "dashboard.html"), "utf8");
+if (!dashboard.includes("Creative Studio") || !dashboard.includes('id="creativeGenerate"') || !dashboard.includes('id="creativePrepare"') || !dashboard.includes('id="creativeGallery"')) throw new Error("The Creative Studio controls are missing from the packaged dashboard.");
+
 if (!dashboard.includes("150,000 English word forms")) {
   throw new Error("The expanded offline dictionary is not wired into the dashboard.");
 }
@@ -101,11 +110,12 @@ const styleCode = (await Promise.all(styleFiles.map(file => fs.readFile(file, "u
 if (!styleCode.includes("--oracle-accent") || !styleCode.includes(".ai-specs")) {
   throw new Error("The shared ORACLE visual theme is missing from the packaged stylesheets.");
 }
+if (!styleCode.includes(".creative-layout") || !styleCode.includes(".creative-gallery-grid")) throw new Error("Creative Studio dashboard styles are missing from the build.");
 if (!styleCode.includes(".writing-layout") || !styleCode.includes("#writerDraft")) {
   throw new Error("The Writing Assistant visual styles are missing from the build.");
 }
 if (!dashboard.includes("dashboard.") && !dashboard.includes("webllm-client.entry")) throw new Error("Dashboard HTML does not appear to reference its bundled application assets.");
-if (!dashboard.includes("VERSION <b>1.7.0</b>")) throw new Error("Dashboard version display is stale.");
+if (!dashboard.includes("VERSION <b>1.8.0</b>")) throw new Error("Dashboard version display is stale.");
 if (!dashboard.includes("dashboard.")) throw new Error("Dashboard application scripts are missing from the built dashboard.");
 const offscreenHtml = await fs.readFile(path.join(root, "ai-offscreen.html"), "utf8");
 if (!offscreenHtml.includes("ai-offscreen.") || !/type="module"/.test(offscreenHtml)) {
@@ -150,6 +160,16 @@ if (!localAiSource.includes("WRITING_DRAFT_LIMIT") || !localAiSource.includes("w
   throw new Error("Local writing prompts or bounded draft context are missing from the source.");
 }
 const dashboardSource = await fs.readFile(path.resolve("dashboard.js"), "utf8");
+if (!dashboardSource.includes("127.0.0.1:8765") || !dashboardSource.includes("creativeImprove") || !dashboardSource.includes("creativeRenderGallery")) throw new Error("The dashboard is missing its local image-engine bridge or prompt/gallery controls.");
+if (!localAiSource.includes("image_prompt:") || !dashboardSource.includes("askTask('image_prompt'")) throw new Error("Local Qwen image-prompt enhancement is missing.");
+const companionRoot = path.resolve("companion/image-engine");
+for (const required of ["server.py", "requirements.txt", "README.md", "Install-ORACLE-Creative-Studio.ps1", "Start-ORACLE-Creative-Studio.ps1"]) {
+  try { await fs.access(path.join(companionRoot, required)); } catch { throw new Error("Creative Studio companion file is missing: " + required); }
+}
+const companionServer = await fs.readFile(path.join(companionRoot, "server.py"), "utf8");
+if (!companionServer.includes("Text2ImagePipeline") || !companionServer.includes("127.0.0.1") || !companionServer.includes("EXTENSION_ORIGIN") || !companionServer.includes("X-ORACLE-Client")) throw new Error("The local OpenVINO image service or extension-origin protections are missing.");
+if (!companionServer.includes('"GPU"') || !companionServer.includes('"CPU"')) throw new Error("The companion must support Intel GPU detection and CPU fallback.");
+
 if (!dashboardSource.includes("oracle_writing_workspace_v1") || !dashboardSource.includes("writerDraft") || !dashboardSource.includes("writerReview")) {
   throw new Error("Local writing draft recovery or dashboard controls are missing from the source.");
 }

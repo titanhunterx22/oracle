@@ -11,6 +11,7 @@
       <button data-p="analyse"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z"/><path d="M4 17a2.5 2.5 0 0 1 2.5-2.5H20M8 7h8M8 10h5"/></svg><span>Page analysis</span><span class="nav-arrow">↗</span></button>
       <button data-p="text"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M12 6v13M8 19h8M8 10h8"/><path d="m8.5 6 3.5-3 3.5 3"/></svg><span>Text assistant</span><span class="nav-arrow">↗</span></button>
       <button data-p="writing"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5 8.2 18.7 19 7.9a2.1 2.1 0 0 0-3-3L5.2 15.7 4 19.5Z"/><path d="m14.8 6.1 3.1 3.1M4 21h16"/></svg><span>Writing assistant</span><span class="nav-arrow">↗</span></button>
+      <button data-p="creative"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H17l3 3v9.5A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-10Z"/><path d="m9 15 2.2-2.2 2.1 2.1 2.7-3.2 2 3.3M8 8.5h4"/></svg><span>Creative Studio</span><span class="nav-arrow">↗</span></button>
       <span class="nav-group-label nav-group-spaced">Your library</span>
       <button data-p="vault"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5v-9Z"/><path d="M4 8h16M8 12h8M8 15h5"/></svg><span>Knowledge vault</span><span class="nav-arrow">↗</span></button>
       <span class="nav-group-label nav-group-spaced">Browser</span>
@@ -24,7 +25,7 @@
   <main>
     <div class="workspace-head glass">
       <div class="workspace-title-wrap"><span class="eyebrow"><span class="eyebrow-mark"></span> PRIVATE KNOWLEDGE WORKSPACE</span><h2 id="panelTitle">Chat</h2><p id="panelDescription">Ask questions about the page you have open.</p></div>
-      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.7.0</b></span></div>
+      <div class="workspace-status"><span class="local-pill"><i></i> PROCESSED ON DEVICE</span><span class="workspace-version">ORACLE <b>1.8.0</b></span></div>
     </div>
     <div id="welcome" class="glass banner" hidden><b>ORACLE is installed.</b> Everything runs on this device, with no accounts and no API keys. Open any web page, then use the popup (<kbd>Ctrl+Shift+O</kbd>), the command palette (<kbd>Ctrl+Shift+K</kbd>) or this dashboard. <button class="btn sm" id="welcomeX">Got it</button></div>
 
@@ -184,6 +185,46 @@
         <div class="outcard"><div id="cmpOut" class="md"><p class="mute">Pick two open tabs.</p></div><div class="acts"><button class="btn sm" data-copy="#cmpOut">Copy</button><button class="btn sm" data-save="#cmpOut" data-title="Page comparison">Save to Vault</button></div></div></div>
     </section>
 
+    <section id="p-creative" class="panel glass scroll creative-workspace">
+      <div class="section-kicker"><span class="section-symbol">✧</span><div><b>Creative studio</b><small>Generate original images with a local Intel-optimised model. Nothing is sent to an image API.</small></div><span class="section-count">OPENVINO · LOCAL</span></div>
+      <div class="creative-hero">
+        <div><span class="eyebrow">ORACLE / IMAGE GENERATION</span><h2>Turn an idea into an image.</h2><p>Describe the scene, choose a visual direction and generate on your own computer. The first setup downloads the image model; generation itself runs locally.</p></div>
+        <div class="creative-chip"><i></i><span>PRIVATE BY DESIGN</span></div>
+      </div>
+      <div class="creative-engine-card">
+        <div class="creative-engine-icon">◈</div>
+        <div class="creative-engine-copy"><b>Local image engine</b><span id="creativeEngineMessage" role="status" aria-live="polite">Checking the companion service…</span><small id="creativeEngineDevice">OpenVINO GenAI · Stable Diffusion 1.5 INT8</small></div>
+        <div class="creative-engine-actions"><button class="btn sm" id="creativeConnect" type="button">Check connection</button><button class="btn primary sm" id="creativePrepare" type="button">Prepare local engine</button></div>
+      </div>
+      <div class="creative-layout">
+        <div class="creative-prompt-card">
+          <div class="creative-card-heading"><div><span class="eyebrow">01 / YOUR IDEA</span><h3>Describe your image</h3></div><span class="writer-count" id="creativePromptCount">0 / 1,600</span></div>
+          <textarea id="creativePrompt" maxlength="1600" placeholder="A quiet coastal village at sunset, warm golden light reflecting on the water, cinematic composition, intricate architecture…" aria-label="Image prompt"></textarea>
+          <div class="bar wrap creative-prompt-tools"><button class="btn sm" id="creativeImprove" type="button">Improve with local Qwen</button><span class="mute">Uses your existing ORACLE text model, if prepared.</span></div>
+          <label for="creativeNegative">Avoid in the image <span class="mute">(optional)</span></label>
+          <textarea id="creativeNegative" maxlength="800" rows="2" placeholder="Blurry, distorted details, text, watermark…" aria-label="Negative image prompt"></textarea>
+          <div class="creative-options">
+            <div><label for="creativeStyle">Visual style</label><select id="creativeStyle"><option value="cinematic">Cinematic</option><option value="photographic">Photorealistic</option><option value="illustration">Digital illustration</option><option value="anime">Anime</option><option value="watercolour">Watercolour</option><option value="3d">3D render</option><option value="none">No style preset</option></select></div>
+            <div><label for="creativeSteps">Quality / generation steps</label><select id="creativeSteps"><option value="10">10 · Faster draft</option><option value="15">15 · Balanced</option><option value="20" selected>20 · Recommended</option><option value="25">25 · More detail</option><option value="30">30 · Highest detail</option></select></div>
+          </div>
+          <div class="creative-model-note"><b>Model profile</b><span>Stable Diffusion 1.5 INT8 · 512 × 512 · one image per generation · Intel GPU when available, CPU fallback.</span></div>
+          <button class="btn primary creative-generate" id="creativeGenerate" type="button" disabled><span>✦</span> Generate image</button>
+          <div class="creative-progress" id="creativeProgress" hidden><div class="creative-progress-top"><b id="creativeProgressLabel">Preparing generation…</b><span id="creativeProgressPercent">0%</span></div><div class="creative-progress-track"><i id="creativeProgressBar"></i></div><small id="creativeProgressDetail">Your image is being generated locally.</small></div>
+          <p class="creative-privacy">Prompts and generated images stay on this computer. Hugging Face is contacted only to download the model during initial setup.</p>
+        </div>
+        <div class="creative-preview-card">
+          <div class="creative-card-heading"><div><span class="eyebrow">02 / YOUR RESULT</span><h3>Image preview</h3></div><span class="creative-preview-size">512 × 512</span></div>
+          <div class="creative-preview-stage" id="creativePreviewStage"><div class="creative-preview-empty" id="creativePreviewEmpty"><span>✧</span><b>Your next creation starts here</b><small>Generated images appear here and are saved to your local gallery.</small></div><img id="creativePreview" alt="Generated image preview" hidden></div>
+          <div class="bar wrap creative-result-actions"><button class="btn sm" id="creativeDownload" type="button" disabled>Download PNG</button><button class="btn sm" id="creativeUsePrompt" type="button" disabled>Reuse prompt</button></div>
+          <div class="creative-result-meta" id="creativeResultMeta">No image generated in this session yet.</div>
+        </div>
+      </div>
+      <div class="creative-gallery-card">
+        <div class="creative-gallery-heading"><div><span class="eyebrow">03 / YOUR LIBRARY</span><h3>Local generation gallery</h3><p class="mute">Your latest 12 images, saved on this computer.</p></div><button class="btn sm" id="creativeGalleryRefresh" type="button">Refresh gallery</button></div>
+        <div class="creative-gallery-grid" id="creativeGallery"><div class="creative-gallery-empty">Connect the local engine to view your saved images.</div></div>
+      </div>
+    </section>
+
     <section id="p-settings" class="panel glass scroll settings-panel">
       <div class="section-kicker"><span class="section-symbol">⚙</span><div><b>Make ORACLE yours</b><small>Personalise the experience and keep control of your data.</small></div></div>
       <div class="settings-grid">
@@ -218,7 +259,7 @@
           <div class="data-actions"><div><b>Your local data</b><small>Clear chat history or remove all saved ORACLE data from this device.</small></div><div class="bar wrap"><button class="btn" id="sClearChat">Clear conversation</button><button class="btn danger" id="sClearAll">Delete all data</button></div></div>
         </div>
         <div class="settings-card settings-wide about-card">
-          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.7.0</b></span></div>
+          <div class="settings-card-head"><span class="settings-icon">✦</span><div><h3>About ORACLE</h3><p>A private browser companion, built to work offline.</p></div><span class="workspace-version">VERSION <b>1.8.0</b></span></div>
           <p>ORACLE uses one shared on-device Qwen model for generated analysis, writing assistance, explanations, summaries, revision notes, facts, flashcards, quizzes and selected-text tools. Exact browser operations and dictionary retrieval remain local and deterministic, with dictionary entries supplied to the model when a deeper explanation is requested.</p>
         </div>
       </div>

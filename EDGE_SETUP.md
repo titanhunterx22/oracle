@@ -47,3 +47,19 @@ npm run build:check
 ```
 
 Load the generated `dist` folder through `edge://extensions` → **Load unpacked**. The source includes the WebLLM client and worker entry points; Parcel bundles them for Manifest V3 before installation.
+
+
+## Optional: local image generation (Creative Studio)
+
+Creative Studio uses OpenVINO GenAI in a separate Windows companion process. OpenVINO does not execute inside Edge itself; the ORACLE dashboard connects to the companion at 127.0.0.1:8765.
+
+1. From the latest successful GitHub Actions run, download the separate **ORACLE-Creative-Studio-Engine** artifact and extract it.
+2. Install 64-bit Python 3.11 or 3.12 from https://www.python.org/downloads/windows/ (include the Python Launcher).
+3. Run Install-ORACLE-Creative-Studio.ps1 from the extracted folder. If necessary, open PowerShell there and run: powershell -NoProfile -ExecutionPolicy Bypass -File .\Install-ORACLE-Creative-Studio.ps1
+4. Start **ORACLE Creative Studio** from the Windows Start Menu and keep its PowerShell window open.
+5. In the ORACLE dashboard, open **Creative Studio** and select **Prepare local engine**. This downloads the OpenVINO INT8 Stable Diffusion 1.5 model from Hugging Face. It is a one-time, multi-gigabyte download.
+6. Generate an initial 512 × 512 image. ORACLE tries the Intel GPU first and falls back to CPU if the GPU pipeline cannot initialise.
+
+The companion binds only to 127.0.0.1 and accepts requests only from a Chromium extension origin. The extension's host permission is limited to this one local port. No experimental Edge flags are required. OpenVINO GPU execution requires a compatible Intel graphics driver/OpenCL runtime; CPU fallback is available when GPU support is absent. Image generation is local after the model download.
+
+Model licence: CreativeML Open RAIL-M. Review https://huggingface.co/OpenVINO/stable-diffusion-v1-5-int8-ov before use. Detailed steps and troubleshooting are in companion/image-engine/README.md.

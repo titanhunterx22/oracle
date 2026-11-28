@@ -11,7 +11,7 @@ ORACLE is a Manifest V3 extension for **Microsoft Edge and Google Chrome**. It u
 5. Turn on **Developer mode**, select **Load unpacked**, and choose the extracted folder containing `manifest.json`.
 6. Pin ORACLE to the toolbar and reload tabs that were already open.
 
-The workflow artifact already contains the bundled WebLLM runtime and worker. Node.js is not required to install it.
+The workflow artifact already contains the bundled WebLLM runtime and worker. Node.js is not required to install it. The separate ORACLE-Creative-Studio-Engine artifact contains an optional Windows companion installer for local image generation.
 
 ## Install from source
 
@@ -48,6 +48,7 @@ The expanded data is based on [Open English WordNet 2025+](https://github.com/gl
 | Local AI setup | Dashboard → **Settings** → **Local AI reasoning** → **Download & prepare model** |
 | Offline dictionary | Dashboard → **Text assistant**, or ask `Define <word>` |
 | Writing assistant | Dashboard → **Writing assistant** |
+| Local image generation | Dashboard → **Creative Studio** (requires the separate Windows companion) |
 | Smart Tab Manager | Dashboard → **Browser tools** → **Smart tab manager** |
 
 The Writing assistant provides proofread, rewrite, clarity, shorten, expand, continue, email and academic-polish workflows, with tone, audience, format and optional instructions. **Review draft** produces constructive editorial feedback separately from the edited text. Page selections and readable page text can be inserted into the editor. The working draft and editor settings autosave to `chrome.storage.local` on this device. Generated results are shown separately; **Use result as draft** is an explicit action and the previous draft can be restored. Results can be copied or saved to the Knowledge Vault. Drafts and prompts are passed to the existing local Qwen model and are not sent to an ORACLE server.
@@ -72,13 +73,15 @@ The model has no live internet access. Do not rely on it for live/current facts,
 - `tabs` — list, search, switch and close tabs.
 - `activeTab`, `scripting` — read the active page when you invoke ORACLE.
 - Content script on HTTP/HTTPS pages — page extraction, selection helper, highlighting and the command palette.
+- `http://127.0.0.1:8765/*` — narrowly scoped connection from the extension dashboard to the optional local OpenVINO image companion.
 - `https://en-word.net/*` — optional word-only dictionary lookup when a term is not in the bundled glossary; only the requested word is sent and successful results are cached.
 - Hugging Face/MLC model hosts — download model weights and the WebGPU model library during setup. These hosts are not used to send user prompts or page content.
 
-The extension CSP allows only packaged scripts/WebAssembly and the specific model-download origins. ORACLE has no application backend, accounts, telemetry or paid AI API.
+The extension CSP allows only packaged scripts/WebAssembly and the specific model-download origins. ORACLE has no application backend, accounts, telemetry or paid AI API. The optional image companion is a separate process on this computer, bound only to loopback; its model files and image gallery are stored locally.
 
 ## Honest limitations
 
+- Creative Studio needs the separate Windows companion, Python 3.11/3.12, the OpenVINO runtime, several gigabytes of model storage and a compatible Intel graphics driver for GPU acceleration. Iris Xe is a supported OpenVINO GPU target, but performance and stability must be benchmarked on the actual laptop; CPU fallback may be slower.
 - WebGPU availability depends on browser version, operating system, GPU, drivers and available graphics memory. A WebGPU adapter check does not guarantee every model will initialise successfully.
 - Qwen 2.5 1.5B is still a small local model and is less capable than large cloud models. It can hallucinate and has no live web access.
 - The expanded offline dictionary packages Open English WordNet 2025+ (161,875 lexical forms across 120,564 synsets in the upstream release; ORACLE's compact build contains 152,459 defined word forms and 212,608 senses) alongside ORACLE's curated learner-friendly glossary. Alphabetic shards are compressed and loaded from the extension only when a word is looked up. It provides multiple WordNet senses, examples and related words, but it is a lexical database rather than a complete general-purpose learner's dictionary; specialist, inflected and newly coined terms may still be missing.

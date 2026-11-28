@@ -1,3 +1,11 @@
+# ORACLE 1.8.0
+
+- Added Creative Studio for local text-to-image generation using OpenVINO GenAI and the OpenVINO INT8 Stable Diffusion 1.5 model.
+- Added a Windows companion installer and loopback-only service. The service validates Chromium extension origins, the Host header and a client header; it does not use wildcard CORS or listen on the LAN.
+- Added Intel GPU-first model initialisation with CPU fallback, single-image 512 × 512 generation, adjustable inference steps, optional negative prompts, progress status, PNG download and a local gallery.
+- Added local Qwen image-prompt enhancement using the existing WebLLM model.
+- Added a separate companion-engine build artifact, Python syntax checks and Creative Studio build-verification checks. No image-generation API or model weights are bundled into the extension.
+
 # ORACLE 1.7.0
 
 - Upgraded the basic tab list into a Smart Tab Manager with live tab counts, search, filters and sorting across browser windows.
