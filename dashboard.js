@@ -531,7 +531,7 @@
       if (!buckets.has(key)) buckets.set(key, { windowId: tab.windowId, descriptor, tabs: [] });
       buckets.get(key).tabs.push(tab);
     });
-    let grouped = 0, skipped = 0, failed = 0;
+    let grouped = 0, skipped = tabs.length - tabs.filter(tab => !tab.pinned && (!Number.isInteger(tab.groupId) || tab.groupId < 0)).length, failed = 0;
     for (const bucket of buckets.values()) {
       if (bucket.tabs.length < 2) { skipped += bucket.tabs.length; continue; }
       try {
@@ -650,7 +650,14 @@
       const current = await chrome.windows.getCurrent();
       const existingTabs = await chrome.tabs.query({ windowId: current.id });
       const known = new Set(existingTabs.filter(tab => T.isWeb(tab.url)).map(tab => T.normUrl(tab.url)));
-      const missing = (workspace.tabs || []).filter(item => T.isWeb(item.url) && !known.has(T.normUrl(item.url)));
+      const missing = [];
+      (workspace.tabs || []).forEach(item => {
+        if (!T.isWeb(item.url)) return;
+        const normalised = T.normUrl(item.url);
+        if (known.has(normalised)) return;
+        known.add(normalised);
+        missing.push(item);
+      });
       if (!missing.length) { setTabStatus('All pages in "' + workspace.name + '" are already open in this window.', false); return; }
       $('#tbWorkspaceRestore').disabled = true;
       let restored = 0;
