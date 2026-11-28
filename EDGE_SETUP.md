@@ -54,7 +54,7 @@ Load the generated `dist` folder through `edge://extensions` → **Load unpacked
 Creative Studio uses OpenVINO GenAI in a **self-contained Windows companion application**. OpenVINO does not execute inside Edge itself; the ORACLE dashboard connects to the companion at 127.0.0.1:8765. The Windows companion includes its own private Python runtime, OpenVINO libraries and required packages. You do **not** need to install Python, pip, Node.js or developer tools.
 
 1. From the latest successful GitHub Actions run, download the separate **ORACLE-Creative-Studio-Engine** artifact and extract the entire ZIP. Do not run the installer inside the ZIP preview.
-2. Double-click **Install-ORACLE-Creative-Studio.ps1** (or right-click it and choose **Run with PowerShell**).
+2. Double-click **Install-ORACLE-Creative-Studio.bat**. It launches the PowerShell installer safely without requiring you to type commands.
 3. The installer copies the bundled application into your local Programs folder and creates **ORACLE Creative Studio** in the Windows Start Menu. It does not install Python or change PATH.
 4. Open **ORACLE Creative Studio** from the Start Menu and keep its PowerShell window open while generating images. Close the window or press Ctrl+C to stop it.
 5. In the ORACLE dashboard, open **Creative Studio** and select **Prepare local engine**. This downloads the OpenVINO INT8 Stable Diffusion 1.5 model (about 2.3 GB) from Hugging Face. This is a one-time download.
