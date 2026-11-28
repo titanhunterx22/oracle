@@ -1269,7 +1269,8 @@
     const active = !!data.model_ready;
     $('#creativePrepare').textContent = active ? 'Image engine ready' : data.stage === 'downloading' || data.stage === 'loading' ? 'Preparing…' : 'Prepare local engine';
     $('#creativePrepare').disabled = active || data.stage === 'downloading' || data.stage === 'loading';
-    $('#creativeGenerate').disabled = !active;
+    const generationRunning = !!(data.job && data.job.state === 'running');
+    $('#creativeGenerate').disabled = !active || generationRunning;
     $('#creativeEngineDevice').textContent = 'OpenVINO GenAI · ' + (data.device || 'device not selected') + (data.gpu_available ? ' · Intel GPU detected' : ' · CPU fallback available');
     if (data.job && data.job.state === 'running') {
       $('#creativeProgress').hidden = false;
