@@ -16,7 +16,7 @@ The model weights are about 2.3 GB on Hugging Face and are not bundled in the Wi
 ## Install — no Python required
 
 1. Download and extract ORACLE-Creative-Studio-Engine.zip completely. Do not run the installer from inside the ZIP preview.
-2. Double-click Install-ORACLE-Creative-Studio.ps1 (or right-click and choose **Run with PowerShell**).
+2. Double-click Install-ORACLE-Creative-Studio.bat. It starts the PowerShell installer for you.
 3. The installer copies the self-contained application to %LOCALAPPDATA%\Programs\ORACLE Creative Studio and adds **ORACLE Creative Studio** to your Windows Start Menu. It does not install Python or alter your PATH.
 4. Open **ORACLE Creative Studio** from the Start Menu. Keep its PowerShell window open while using image generation; close the window or press Ctrl+C to stop the service.
 5. Open the ORACLE dashboard in Microsoft Edge → **Creative Studio** → **Prepare local engine**. The model is downloaded once to %LOCALAPPDATA%\ORACLE\CreativeStudio.
