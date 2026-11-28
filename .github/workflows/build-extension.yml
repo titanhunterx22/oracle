@@ -16,6 +16,10 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -26,10 +30,20 @@ jobs:
         run: |
           npm run build:check
           test -f dist/manifest.json
+          python -m py_compile companion/image-engine/server.py scripts/package_companion.py
+          npm run build:companion
+          test -f companion-dist/ORACLE-Creative-Studio-Engine.zip
       - name: Upload installable extension
         uses: actions/upload-artifact@v4
         with:
           name: ORACLE-browser-extension
           path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload local image engine installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ORACLE-Creative-Studio-Engine
+          path: companion-dist/ORACLE-Creative-Studio-Engine.zip
           if-no-files-found: error
           retention-days: 14
