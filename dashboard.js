@@ -282,32 +282,411 @@
   const CROSS_TAB_LIMIT = 5;
   const researchSelected = new Set();
   let researchTabs = [], lastCrossResearch = null, crossResearchBusy = false;
-  /* ───── tab manager ───── */
-  let tabData = { tabs: [], duplicates: [] };
-  async function renderTabs() {
-    tabData = await T.tabsSummary(); const q = $('#tbQ').value.toLowerCase(), box = $('#tbList'); box.innerHTML = '';
-    const dupIds = new Set(tabData.duplicates.flat().map(t => t.id));
-    const tabs = tabData.tabs.filter(t => ((t.title || '') + ' ' + t.url).toLowerCase().includes(q));
-    if (!tabs.length) { box.innerHTML = '<div class="empty-note"><p>No matching tabs.</p></div>'; return; }
-    tabs.forEach(t => {
-      const it = document.createElement('div'); it.className = 'item' + (dupIds.has(t.id) ? ' dup' : '');
-      it.innerHTML = '<input type="checkbox" aria-label="Select tab"><div class="grow"><div class="t"></div><div class="s"></div></div><button class="btn sm">Switch</button>';
-      it.querySelector('input').dataset.id = t.id; it.querySelector('.t').textContent = t.title || t.url;
-      it.querySelector('.s').textContent = host(t.url) + (dupIds.has(t.id) ? ' · duplicate' : '');
-      it.querySelector('button').onclick = () => T.switchTo(t); box.appendChild(it);
+  /* ───── smart tab manager ───── */
+  const TAB_WORKSPACES_KEY = 'oracle_tab_workspaces_v1';
+  const selectedTabIds = new Set();
+  let tabData = { tabs: [], duplicates: [] }, tabWorkspaces = [], tabRefreshTimer = 0, tabGroupNames = new Map();
+  const TAB_TOPICS = [
+    { title: 'Development', color: 'blue', test: /github|gitlab|stackoverflow|stackexchange|developer\.mozilla|developer\.microsoft|npmjs|pypi|codepen|codesandbox|localhost|api reference|documentation|docs\./i },
+    { title: 'Learning', color: 'purple', test: /lesson|course|classroom|homework|revision|study|quiz|school|university|khanacademy|coursera|edx|wikipedia|britannica|education/i },
+    { title: 'Shopping', color: 'orange', test: /amazon|ebay|etsy|shop|store|shopping|basket|checkout|product|price comparison/i },
+    { title: 'Video & social', color: 'pink', test: /youtube|youtu\.be|netflix|twitch|reddit|instagram|tiktok|facebook|x\.com|twitter|pinterest|discord/i },
+    { title: 'News', color: 'red', test: /news|bbc\.|reuters|theguardian|cnn\.|sky\.com|nytimes|washingtonpost|bloomberg|ft\.com/i },
+    { title: 'Work & productivity', color: 'cyan', test: /docs\.google|drive\.google|notion|outlook|office\.com|microsoft365|teams\.microsoft|slack|trello|asana|todoist|calendar/i },
+    { title: 'Research & reading', color: 'green', test: /arxiv|scholar|pubmed|jstor|research|journal|paper|science|nature\.com|academic|article|blog|medium\.com/i }
+  ];
+  const tabAge = stamp => {
+    if (!stamp) return 'Recently opened';
+    const minutes = Math.max(0, Math.floor((Date.now() - stamp) / 60000));
+    if (minutes < 1) return 'Active just now';
+    if (minutes < 60) return minutes + 'm ago';
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return hours + 'h ago';
+    return Math.floor(hours / 24) + 'd ago';
+  };
+  function topicForTab(tab) {
+    const hay = ((tab.title || '') + ' ' + (tab.url || '') + ' ' + host(tab.url || '')).toLowerCase();
+    return TAB_TOPICS.find(item => item.test.test(hay)) || { title: 'Other', color: 'grey' };
+  }
+  function setTabStatus(message, isError) {
+    const node = $('#tbStatus');
+    if (!node) return;
+    node.textContent = message;
+    node.classList.toggle('error', !!isError);
+  }
+  function makeTabBadge(label, extra) {
+    const badge = document.createElement('span');
+    badge.className = 'badge' + (extra ? ' ' + extra : '');
+    badge.textContent = label;
+    return badge;
+  }
+  function updateTabSelectionCount() {
+    $('#tbSelectedCount').textContent = selectedTabIds.size + ' selected';
+    $('#tbClose').disabled = selectedTabIds.size === 0;
+    $('#tbUngroup').disabled = selectedTabIds.size === 0;
+    $('#tbGroupSite').disabled = selectedTabIds.size === 0;
+  }
+  async function loadTabWorkspaces() {
+    try {
+      const stored = await chrome.storage.local.get(TAB_WORKSPACES_KEY);
+      tabWorkspaces = Array.isArray(stored[TAB_WORKSPACES_KEY]) ? stored[TAB_WORKSPACES_KEY] : [];
+    } catch (_) {
+      tabWorkspaces = [];
+    }
+    const select = $('#tbWorkspaces'), previous = select.value;
+    select.innerHTML = '';
+    if (!tabWorkspaces.length) select.add(new Option('No saved workspaces', ''));
+    tabWorkspaces.forEach(workspace => {
+      const count = Array.isArray(workspace.tabs) ? workspace.tabs.length : 0;
+      select.add(new Option(workspace.name + ' · ' + count + ' tabs', workspace.id));
+    });
+    if (previous && tabWorkspaces.some(item => item.id === previous)) select.value = previous;
+    updateWorkspaceButtons();
+  }
+  function selectedWorkspace() {
+    return tabWorkspaces.find(item => item.id === $('#tbWorkspaces').value) || null;
+  }
+  function updateWorkspaceButtons() {
+    const exists = !!selectedWorkspace();
+    $('#tbWorkspaceRestore').disabled = !exists;
+    $('#tbWorkspaceDelete').disabled = !exists;
+  }
+  async function renderTabStats(tabs, duplicates) {
+    const box = $('#tbStats');
+    box.innerHTML = '';
+    const dupExtra = duplicates.reduce((count, group) => count + Math.max(0, group.length - 1), 0);
+    const pinned = tabs.filter(tab => tab.pinned).length;
+    const windows = new Set(tabs.map(tab => tab.windowId)).size;
+    const stats = [
+      [tabs.length.toLocaleString(), 'Open web tabs'],
+      [windows.toLocaleString(), windows === 1 ? 'Browser window' : 'Browser windows'],
+      [pinned.toLocaleString(), 'Pinned tabs'],
+      [dupExtra.toLocaleString(), 'Extra duplicates']
+    ];
+    stats.forEach(([value, label]) => {
+      const card = document.createElement('div');
+      card.className = 'tab-manager-stat';
+      const number = document.createElement('b');
+      number.textContent = value;
+      const caption = document.createElement('span');
+      caption.textContent = label;
+      card.append(number, caption);
+      box.appendChild(card);
     });
   }
-  $('#tbQ').addEventListener('input', renderTabs); $('#tbRef').onclick = renderTabs;
+  async function renderTabs() {
+    const box = $('#tbList');
+    try {
+      tabData = await T.tabsSummary();
+      const allTabs = tabData.tabs.slice();
+      const openIds = new Set(allTabs.map(tab => tab.id));
+      [...selectedTabIds].forEach(id => { if (!openIds.has(id)) selectedTabIds.delete(id); });
+      await renderTabStats(allTabs, tabData.duplicates);
+      await loadTabWorkspaces();
+      tabGroupNames = new Map();
+      if (chrome.tabGroups && chrome.tabGroups.get) {
+        const groupIds = [...new Set(allTabs.map(tab => tab.groupId).filter(id => Number.isInteger(id) && id >= 0))];
+        await Promise.all(groupIds.map(async id => {
+          try {
+            const group = await chrome.tabGroups.get(id);
+            tabGroupNames.set(id, group.title || 'Grouped tabs');
+          } catch (_) { /* group may have disappeared during refresh */ }
+        }));
+      }
+      const query = ($('#tbQ').value || '').trim().toLowerCase();
+      const filter = $('#tbFilter').value;
+      const currentWindow = await chrome.windows.getCurrent();
+      const duplicateIds = new Set(tabData.duplicates.flat().map(tab => tab.id));
+      let visible = allTabs.filter(tab => {
+        const text = ((tab.title || '') + ' ' + (tab.url || '') + ' ' + host(tab.url || '')).toLowerCase();
+        if (query && !text.includes(query)) return false;
+        if (filter === 'current' && tab.windowId !== currentWindow.id) return false;
+        if (filter === 'duplicates' && !duplicateIds.has(tab.id)) return false;
+        if (filter === 'pinned' && !tab.pinned) return false;
+        if (filter === 'unpinned' && tab.pinned) return false;
+        if (filter === 'recent' && (!tab.lastAccessed || Date.now() - tab.lastAccessed > 60 * 60 * 1000)) return false;
+        return true;
+      });
+      const sort = $('#tbSort').value;
+      visible.sort((a, b) => {
+        if (sort === 'title') return (a.title || a.url || '').localeCompare(b.title || b.url || '');
+        if (sort === 'domain') return host(a.url || '').localeCompare(host(b.url || '')) || (a.title || '').localeCompare(b.title || '');
+        if (sort === 'window') return a.windowId - b.windowId || a.index - b.index;
+        return (b.lastAccessed || 0) - (a.lastAccessed || 0) || a.index - b.index;
+      });
+      box.innerHTML = '';
+      if (!visible.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-note';
+        const heading = document.createElement('h3');
+        heading.textContent = 'No matching tabs';
+        const help = document.createElement('p');
+        help.textContent = allTabs.length ? 'Try another filter or clear your search.' : 'Open a normal webpage to start building your browser workspace.';
+        empty.append(heading, help);
+        box.appendChild(empty);
+      } else {
+        let lastWindow = null;
+        visible.forEach(tab => {
+          if (tab.windowId !== lastWindow) {
+            lastWindow = tab.windowId;
+            const heading = document.createElement('div');
+            heading.className = 'tab-manager-window-heading';
+            heading.textContent = tab.windowId === currentWindow.id ? 'This window' : 'Other window · ' + tab.windowId;
+            box.appendChild(heading);
+          }
+          const row = document.createElement('div');
+          row.className = 'item tab-manager-item' + (duplicateIds.has(tab.id) ? ' dup' : '') + (tab.active ? ' is-active' : '');
+          const check = document.createElement('input');
+          check.type = 'checkbox';
+          check.className = 'tab-manager-check';
+          check.checked = selectedTabIds.has(tab.id);
+          check.setAttribute('aria-label', 'Select ' + (tab.title || host(tab.url)));
+          check.addEventListener('change', () => {
+            if (check.checked) selectedTabIds.add(tab.id);
+            else selectedTabIds.delete(tab.id);
+            updateTabSelectionCount();
+          });
+          const main = document.createElement('div');
+          main.className = 'tab-manager-main';
+          const title = document.createElement('div');
+          title.className = 'tab-manager-title';
+          title.textContent = tab.title || tab.url;
+          const meta = document.createElement('div');
+          meta.className = 'tab-manager-meta';
+          meta.textContent = host(tab.url) + ' · ' + tabAge(tab.lastAccessed) + ' · Window ' + tab.windowId;
+          const badges = document.createElement('div');
+          badges.className = 'tab-manager-badges';
+          if (tab.active) badges.appendChild(makeTabBadge('Active', 'tab-badge-active'));
+          if (tab.pinned) badges.appendChild(makeTabBadge('Pinned', ''));
+          if (tab.mutedInfo && tab.mutedInfo.muted) badges.appendChild(makeTabBadge('Muted', ''));
+          if (duplicateIds.has(tab.id)) badges.appendChild(makeTabBadge('Duplicate', 'tab-badge-duplicate'));
+          if (Number.isInteger(tab.groupId) && tab.groupId >= 0) badges.appendChild(makeTabBadge(tabGroupNames.get(tab.groupId) || 'Grouped', 'tab-badge-group'));
+          if (badges.childNodes.length) meta.appendChild(badges);
+          main.append(title, meta);
+          const actions = document.createElement('div');
+          actions.className = 'tab-manager-row-actions';
+          const addAction = (label, titleText, callback, extraClass) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn sm' + (extraClass ? ' ' + extraClass : '');
+            button.textContent = label;
+            button.title = titleText;
+            button.addEventListener('click', async () => {
+              try { await callback(); }
+              catch (error) { setTabStatus(error.message || String(error), true); }
+            });
+            actions.appendChild(button);
+          };
+          addAction('Switch', 'Activate this tab', async () => { await T.switchTo(tab); });
+          addAction(tab.pinned ? 'Unpin' : 'Pin', tab.pinned ? 'Unpin tab' : 'Pin tab', async () => {
+            await chrome.tabs.update(tab.id, { pinned: !tab.pinned });
+            await renderTabs();
+          });
+          addAction(tab.mutedInfo && tab.mutedInfo.muted ? 'Unmute' : 'Mute', tab.mutedInfo && tab.mutedInfo.muted ? 'Unmute tab' : 'Mute tab', async () => {
+            await chrome.tabs.update(tab.id, { muted: !(tab.mutedInfo && tab.mutedInfo.muted) });
+            await renderTabs();
+          });
+          addAction('Duplicate', 'Open a copy of this tab', async () => {
+            await chrome.tabs.duplicate(tab.id);
+            await renderTabs();
+          });
+          addAction('Close', 'Close this tab', async () => {
+            await chrome.tabs.remove(tab.id);
+            selectedTabIds.delete(tab.id);
+            await renderTabs();
+            await loadTabs();
+          }, 'danger');
+          row.append(check, main, actions);
+          box.appendChild(row);
+        });
+      }
+      updateTabSelectionCount();
+      if (!$('#tbStatus').classList.contains('error')) {
+        setTabStatus(visible.length + ' of ' + allTabs.length + ' web tabs shown · Existing tab groups are preserved by automatic organisation.', false);
+      }
+    } catch (error) {
+      box.innerHTML = '';
+      const message = document.createElement('div');
+      message.className = 'empty-note';
+      message.textContent = 'The tab list could not be loaded: ' + (error.message || String(error));
+      box.appendChild(message);
+      setTabStatus(error.message || String(error), true);
+    }
+  }
+  function queueTabRefresh() {
+    clearTimeout(tabRefreshTimer);
+    tabRefreshTimer = setTimeout(() => {
+      if ($('#p-tools').classList.contains('on')) renderTabs();
+    }, 280);
+  }
+  async function groupTabsIntoBuckets(tabs, getBucket) {
+    if (!chrome.tabs.group || !chrome.tabGroups || !chrome.tabGroups.update) {
+      throw new Error('Tab grouping is not available in this browser version. Update Edge and reload ORACLE.');
+    }
+    const buckets = new Map();
+    tabs.filter(tab => !tab.pinned && (!Number.isInteger(tab.groupId) || tab.groupId < 0)).forEach(tab => {
+      const descriptor = getBucket(tab);
+      if (!descriptor || !descriptor.key) return;
+      const key = tab.windowId + '|' + descriptor.key;
+      if (!buckets.has(key)) buckets.set(key, { windowId: tab.windowId, descriptor, tabs: [] });
+      buckets.get(key).tabs.push(tab);
+    });
+    let grouped = 0, skipped = 0, failed = 0;
+    for (const bucket of buckets.values()) {
+      if (bucket.tabs.length < 2) { skipped += bucket.tabs.length; continue; }
+      try {
+        const groupId = await chrome.tabs.group({ tabIds: bucket.tabs.map(tab => tab.id) });
+        await chrome.tabGroups.update(groupId, { title: bucket.descriptor.title, color: bucket.descriptor.color || 'grey', collapsed: false });
+        grouped += bucket.tabs.length;
+      } catch (error) {
+        failed += bucket.tabs.length;
+      }
+    }
+    return { grouped, skipped, failed };
+  }
+  async function organiseTabsByTopic() {
+    const tabs = await T.pageTabs();
+    if (!tabs.length) { setTabStatus('No web tabs are open to organise.', true); return; }
+    setTabStatus('Sorting tabs into topic groups…', false);
+    $('#tbSmartOrganise').disabled = true;
+    try {
+      const result = await groupTabsIntoBuckets(tabs, tab => {
+        const topic = topicForTab(tab);
+        return { key: topic.title, title: topic.title, color: topic.color };
+      });
+      await renderTabs();
+      await loadTabs();
+      setTabStatus(result.grouped + ' tabs organised into topic groups. ' +
+        result.skipped + ' left alone (single tabs, pinned tabs or tabs already in a group).' +
+        (result.failed ? ' ' + result.failed + ' tabs could not be grouped.' : ''), result.failed > 0);
+    } catch (error) { setTabStatus(error.message || String(error), true); }
+    finally { $('#tbSmartOrganise').disabled = false; }
+  }
+  async function groupSelectedBySite() {
+    const selected = tabData.tabs.filter(tab => selectedTabIds.has(tab.id));
+    if (selected.length < 2) { setTabStatus('Select at least two tabs to group them by website.', true); return; }
+    setTabStatus('Grouping selected tabs by website…', false);
+    const result = await groupTabsIntoBuckets(selected, tab => {
+      const domain = host(tab.url || '').replace(/^www\./, '');
+      return { key: domain, title: domain || 'Website', color: 'blue' };
+    });
+    await renderTabs();
+    await loadTabs();
+    setTabStatus(result.grouped + ' selected tabs grouped by website. ' +
+      result.skipped + ' left alone (single tabs, pinned tabs or tabs already in a group).' +
+      (result.failed ? ' ' + result.failed + ' tabs could not be grouped.' : ''), result.failed > 0);
+  }
+  $('#tbQ').addEventListener('input', renderTabs);
+  $('#tbFilter').addEventListener('change', renderTabs);
+  $('#tbSort').addEventListener('change', renderTabs);
+  $('#tbRef').onclick = async () => { await renderTabs(); await loadTabs(); setTabStatus('Tab list refreshed.', false); };
+  $('#tbSmartOrganise').onclick = organiseTabsByTopic;
+  $('#tbGroupSite').onclick = async () => {
+    try { await groupSelectedBySite(); }
+    catch (error) { setTabStatus(error.message || String(error), true); }
+  };
+  $('#tbUngroup').onclick = async () => {
+    try {
+      const selected = tabData.tabs.filter(tab => selectedTabIds.has(tab.id) && Number.isInteger(tab.groupId) && tab.groupId >= 0);
+      if (!selected.length) { setTabStatus('Select tabs that are already in a group first.', true); return; }
+      await chrome.tabs.ungroup(selected.map(tab => tab.id));
+      await renderTabs();
+      setTabStatus(selected.length + ' tabs removed from their groups.', false);
+    } catch (error) { setTabStatus(error.message || String(error), true); }
+  };
   $('#tbDup').onclick = async () => {
-    await renderTabs(); let n = 0;
-    tabData.duplicates.forEach(g => g.slice(1).forEach(t => { const c = $(`#tbList input[data-id="${t.id}"]`); if (c) { c.checked = true; n++; } }));
-    toast(n ? `Selected ${n} duplicate tab${n > 1 ? 's' : ''} (the first of each set is kept)` : 'No duplicate tabs found');
+    await renderTabs();
+    let count = 0;
+    tabData.duplicates.forEach(group => {
+      const keep = group.slice().sort((a, b) =>
+        Number(b.active) - Number(a.active) || Number(b.pinned) - Number(a.pinned) || a.index - b.index
+      );
+      keep.slice(1).forEach(tab => {
+        if (!tab.pinned && !tab.active) { selectedTabIds.add(tab.id); count++; }
+      });
+    });
+    await renderTabs();
+    setTabStatus(count ? 'Selected ' + count + ' duplicate tabs. Active and pinned copies are protected.' : 'No safe duplicate tabs to select. Active and pinned copies were left untouched.', false);
   };
   $('#tbClose').onclick = async () => {
-    const ids = $$('#tbList input:checked').map(c => +c.dataset.id); if (!ids.length) { toast('Select tabs first'); return; }
-    if (!confirm(`Close ${ids.length} tab${ids.length > 1 ? 's' : ''}? This can’t be undone from ORACLE.`)) return;
-    await T.closeTabs(ids); await renderTabs(); await loadTabs(); toast('Tabs closed');
+    const ids = [...selectedTabIds].filter(id => tabData.tabs.some(tab => tab.id === id));
+    if (!ids.length) { setTabStatus('Select tabs first.', true); return; }
+    if (!confirm('Close ' + ids.length + ' selected tab' + (ids.length === 1 ? '' : 's') + '? This cannot be undone from ORACLE.')) return;
+    try {
+      await T.closeTabs(ids);
+      ids.forEach(id => selectedTabIds.delete(id));
+      await renderTabs();
+      await loadTabs();
+      setTabStatus(ids.length + ' selected tabs closed.', false);
+    } catch (error) { setTabStatus(error.message || String(error), true); }
   };
+  $('#tbWorkspaces').addEventListener('change', updateWorkspaceButtons);
+  $('#tbWorkspaceSave').onclick = async () => {
+    try {
+      const name = $('#tbWorkspaceName').value.trim();
+      if (!name) { $('#tbWorkspaceName').focus(); setTabStatus('Give the workspace a name first.', true); return; }
+      const current = await chrome.windows.getCurrent();
+      const tabs = (await chrome.tabs.query({ windowId: current.id })).filter(tab => T.isWeb(tab.url));
+      if (!tabs.length) throw new Error('There are no normal webpages in this window to save.');
+      const workspace = {
+        id: 'workspace-' + Date.now(),
+        name: name.slice(0, 48),
+        createdAt: Date.now(),
+        tabs: tabs.slice(0, 150).map(tab => ({ url: tab.url, title: tab.title || tab.url, pinned: !!tab.pinned }))
+      };
+      const next = [workspace, ...tabWorkspaces.filter(item => item.name.toLowerCase() !== workspace.name.toLowerCase())].slice(0, 25);
+      await chrome.storage.local.set({ [TAB_WORKSPACES_KEY]: next });
+      $('#tbWorkspaceName').value = '';
+      await loadTabWorkspaces();
+      $('#tbWorkspaces').value = workspace.id;
+      updateWorkspaceButtons();
+      setTabStatus('Saved "' + workspace.name + '" with ' + workspace.tabs.length + ' tabs on this device.', false);
+    } catch (error) { setTabStatus(error.message || String(error), true); }
+  };
+  $('#tbWorkspaceRestore').onclick = async () => {
+    const workspace = selectedWorkspace();
+    if (!workspace) return;
+    try {
+      const current = await chrome.windows.getCurrent();
+      const existingTabs = await chrome.tabs.query({ windowId: current.id });
+      const known = new Set(existingTabs.filter(tab => T.isWeb(tab.url)).map(tab => T.normUrl(tab.url)));
+      const missing = (workspace.tabs || []).filter(item => T.isWeb(item.url) && !known.has(T.normUrl(item.url)));
+      if (!missing.length) { setTabStatus('All pages in "' + workspace.name + '" are already open in this window.', false); return; }
+      $('#tbWorkspaceRestore').disabled = true;
+      let restored = 0;
+      for (const item of missing.slice(0, 150)) {
+        const tab = await chrome.tabs.create({ windowId: current.id, url: item.url, active: false });
+        if (item.pinned) await chrome.tabs.update(tab.id, { pinned: true });
+        known.add(T.normUrl(item.url));
+        restored++;
+      }
+      await renderTabs();
+      await loadTabs();
+      setTabStatus('Restored ' + restored + ' missing pages from "' + workspace.name + '". Existing pages were not duplicated.', false);
+    } catch (error) { setTabStatus(error.message || String(error), true); }
+    finally { updateWorkspaceButtons(); }
+  };
+  $('#tbWorkspaceDelete').onclick = async () => {
+    const workspace = selectedWorkspace();
+    if (!workspace) return;
+    if (!confirm('Delete the saved workspace "' + workspace.name + '"? This does not close any tabs.')) return;
+    tabWorkspaces = tabWorkspaces.filter(item => item.id !== workspace.id);
+    await chrome.storage.local.set({ [TAB_WORKSPACES_KEY]: tabWorkspaces });
+    await loadTabWorkspaces();
+    setTabStatus('Saved workspace deleted. Your open tabs were not changed.', false);
+  };
+  chrome.tabs.onCreated.addListener(queueTabRefresh);
+  chrome.tabs.onUpdated.addListener(queueTabRefresh);
+  chrome.tabs.onRemoved.addListener(queueTabRefresh);
+  chrome.tabs.onActivated.addListener(queueTabRefresh);
+  if (chrome.tabs.onMoved) chrome.tabs.onMoved.addListener(queueTabRefresh);
+  if (chrome.tabs.onAttached) chrome.tabs.onAttached.addListener(queueTabRefresh);
+  if (chrome.tabs.onDetached) chrome.tabs.onDetached.addListener(queueTabRefresh);
+  if (chrome.tabGroups) {
+    if (chrome.tabGroups.onCreated) chrome.tabGroups.onCreated.addListener(queueTabRefresh);
+    if (chrome.tabGroups.onUpdated) chrome.tabGroups.onUpdated.addListener(queueTabRefresh);
+    if (chrome.tabGroups.onRemoved) chrome.tabGroups.onRemoved.addListener(queueTabRefresh);
+  }
 
   function updateResearchCount() {
     const count = researchSelected.size;

@@ -1,8 +1,8 @@
 {
   "name": "oracle-browser-extension",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "private": true,
-  "description": "Build ORACLE for Chromium browsers with bundled WebLLM local AI.",
+  "description": "Build ORACLE for Edge and Chrome with local AI and smart browser tools.",
   "scripts": {
     "build": "parcel build manifest.json dashboard.html ai-offscreen.html --config @parcel/config-webextension --dist-dir dist && node postbuild.mjs",
     "verify": "node verify-build.mjs",
