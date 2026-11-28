@@ -1,3 +1,4 @@
-openvino-genai>=2025.0.0,<2027.0.0
+openvino-genai==2026.4.1.0
 huggingface-hub>=0.26.0,<2.0.0
 Pillow>=10.0.0,<13.0.0
+PyInstaller>=6.19,<7.0
