@@ -1,3 +1,7 @@
 node_modules/
 dist/
 .parcel-cache/
+
+companion-dist/
+__pycache__/
+*.py[cod]
