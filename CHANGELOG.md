@@ -1,3 +1,9 @@
+# ORACLE 1.8.1
+
+- Rebuilt the Windows Creative Studio companion as a self-contained PyInstaller application. The downloaded companion now includes its own private Python runtime, OpenVINO GenAI, OpenVINO Runtime, Tokenizers and required libraries; end users no longer need to install Python, pip or Node.js.
+- Moved the companion packaging job to Windows CI and added a smoke test that launches the packaged executable, imports OpenVINO GenAI, enumerates runtime devices and verifies the localhost health endpoint before publishing the ZIP.
+- Updated the Windows installer to copy the bundled application and create a Start Menu shortcut, while preserving model files and the image gallery during application updates.
+
 # ORACLE 1.8.0
 
 - Added Creative Studio for local text-to-image generation using OpenVINO GenAI and the OpenVINO INT8 Stable Diffusion 1.5 model.
