@@ -10,9 +10,10 @@ The first profile targets Intel integrated graphics, including Intel Iris Xe, wi
 - Runtime: openvino-genai and its Text2ImagePipeline
 - Initial output: 512 × 512, one image per request
 - Generation steps: 10, 15, 20, 25 or 30
+- Generation progress: the current stable Python API does not expose reliable per-step progress for this pipeline, so the dashboard uses an indeterminate activity indicator until completion.
 - Device selection: first available OpenVINO GPU device, otherwise CPU; if GPU pipeline initialisation fails, retry on CPU.
 
-OpenVINO's current system requirements list Intel Iris Xe graphics on Windows 10/11. The Windows GPU plugin needs a compatible Intel graphics driver and OpenCL runtime. CPU inference is the fallback if the GPU is absent or cannot initialise. Update the Intel graphics driver before troubleshooting GPU detection.
+OpenVINO's current system requirements list Intel Iris Xe graphics on Windows 10/11. The Windows GPU plugin needs a compatible Intel graphics driver and OpenCL runtime. CPU inference is the fallback if the GPU is absent, cannot initialise, or fails during generation. A GPU generation failure triggers one CPU retry. Update the Intel graphics driver before troubleshooting GPU detection.
 
 ## Installation
 
